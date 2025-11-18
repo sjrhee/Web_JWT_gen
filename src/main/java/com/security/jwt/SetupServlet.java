@@ -39,25 +39,54 @@ public class SetupServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // GET: 초기화 상태 확인
-        response.setContentType("application/json; charset=UTF-8");
+        String action = request.getParameter("action");
 
-        boolean isSetupCompleted = isSetupCompleted();
-        
-        JsonObject result = new JsonObject();
-        result.addProperty("setupCompleted", isSetupCompleted);
-        response.getWriter().write(result.toString());
+        if ("backup".equals(action)) {
+            // Keystore 백업
+            try {
+                backupKeystore(request, response);
+            } catch (Exception e) {
+                try {
+                    sendError(response, 500, "백업 실패: " + e.getMessage());
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        } else {
+            // 초기화 상태 확인
+            response.setContentType("application/json; charset=UTF-8");
+
+            boolean isSetupCompleted = isSetupCompleted();
+            
+            JsonObject result = new JsonObject();
+            result.addProperty("setupCompleted", isSetupCompleted);
+            response.getWriter().write(result.toString());
+        }
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // POST: 초기 설정 수행
-        response.setContentType("application/json; charset=UTF-8");
+        String action = request.getParameter("action");
 
-        try {
-            // 이미 초기화되었는지 확인
-            if (isSetupCompleted()) {
+        if ("restore".equals(action)) {
+            // Keystore 복원
+            try {
+                restoreKeystore(request, response);
+            } catch (Exception e) {
+                try {
+                    sendError(response, 500, "복원 실패: " + e.getMessage());
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        } else {
+            // 초기 설정 수행
+            response.setContentType("application/json; charset=UTF-8");
+
+            try {
+                // 이미 초기화되었는지 확인
+                if (isSetupCompleted()) {
                 sendError(response, 400, "이미 초기화되었습니다");
                 return;
             }
@@ -97,6 +126,7 @@ public class SetupServlet extends HttpServlet {
 
         } catch (Exception e) {
             sendError(response, 500, "초기 설정 실패: " + e.getMessage());
+        }
         }
     }
 
@@ -271,5 +301,80 @@ public class SetupServlet extends HttpServlet {
         error.addProperty("success", false);
         error.addProperty("error", message);
         response.getWriter().write(error.toString());
+    }
+
+    /**
+     * Keystore 백업 다운로드
+     */
+    public void backupKeystore(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String password = request.getParameter("password");
+        if (password == null || !verifyPassword(password)) {
+            sendError(response, 401, "비밀번호가 일치하지 않습니다");
+            return;
+        }
+
+        String webappPath = getServletContext().getRealPath("/");
+        String keystorePath = webappPath + "keystore.jks";
+
+        if (!Files.exists(Paths.get(keystorePath))) {
+            sendError(response, 404, "Keystore를 찾을 수 없습니다");
+            return;
+        }
+
+        // Keystore 파일 읽기
+        byte[] keystoreData = Files.readAllBytes(Paths.get(keystorePath));
+
+        // HTTP 응답으로 파일 전송
+        response.setContentType("application/octet-stream");
+        response.setHeader("Content-Disposition", "attachment; filename=\"keystore.jks\"");
+        response.setContentLength(keystoreData.length);
+
+        try (OutputStream os = response.getOutputStream()) {
+            os.write(keystoreData);
+            os.flush();
+        }
+    }
+
+    /**
+     * Keystore 복원 업로드
+     */
+    public void restoreKeystore(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        response.setContentType("application/json; charset=UTF-8");
+
+        String password = request.getParameter("password");
+        if (password == null || !verifyPassword(password)) {
+            sendError(response, 401, "비밀번호가 일치하지 않습니다");
+            return;
+        }
+
+        // 파일 업로드 처리 (multipart form data)
+        if (!request.getContentType().startsWith("multipart/form-data")) {
+            sendError(response, 400, "multipart/form-data 형식이 필요합니다");
+            return;
+        }
+
+        try {
+            String webappPath = getServletContext().getRealPath("/");
+            String keystorePath = webappPath + "keystore.jks";
+
+            // 기존 백업 생성 (복원 전)
+            if (Files.exists(Paths.get(keystorePath))) {
+                String backupPath = keystorePath + ".backup";
+                Files.copy(Paths.get(keystorePath), Paths.get(backupPath), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            // 업로드된 파일을 Keystore로 저장
+            ServletInputStream inputStream = request.getInputStream();
+            Files.copy(inputStream, Paths.get(keystorePath), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            // 응답
+            JsonObject result = new JsonObject();
+            result.addProperty("success", true);
+            result.addProperty("message", "Keystore가 성공적으로 복원되었습니다");
+            response.getWriter().write(result.toString());
+
+        } catch (Exception e) {
+            sendError(response, 500, "Keystore 복원 실패: " + e.getMessage());
+        }
     }
 }

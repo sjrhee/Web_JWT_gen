@@ -174,6 +174,28 @@
             box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
         }
 
+        .btn-backup {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-backup:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn-restore {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-restore:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 86, 179, 0.3);
+        }
+
         .btn-cancel {
             background: #6c757d;
             color: white;
@@ -472,6 +494,49 @@
                 </div>
             </div>
 
+            <!-- Keystore 백업/복원 섹션 -->
+            <div class="section">
+                <h2>💾 Keystore 관리</h2>
+                
+                <div class="warning-box">
+                    <div class="warning-title">
+                        <span class="warning-icon">💡</span>
+                        Keystore 백업
+                    </div>
+                    <div class="warning-text">
+                        Keystore를 백업받아 안전하게 보관하세요. 
+                        필요 시 복원하여 동일한 키를 재사용할 수 있습니다.
+                    </div>
+                </div>
+
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-label">백업 기능:</span>
+                        <span class="info-value">현재 Keystore를 파일로 다운로드</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">복원 기능:</span>
+                        <span class="info-value">백업된 Keystore 파일 업로드</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">복원 시 효과:</span>
+                        <span class="info-value">
+                            • 이전 EC256 키쌍 재사용<br>
+                            • 발급한 기존 JWT와 호환성 유지<br>
+                            • 현재 Keystore 자동 백업
+                        </span>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-backup" onclick="backupKeystore()">📥 Keystore 다운로드</button>
+                    <button class="btn-restore" onclick="document.getElementById('keystoreFile').click()">📤 Keystore 복원</button>
+                </div>
+                <input type="file" id="keystoreFile" style="display: none;" accept=".jks" onchange="restoreKeystore()">
+                
+                <div id="backupMessage" class="message" style="margin-top: 20px;"></div>
+            </div>
+
             <!-- 추가 정보 -->
             <div class="section">
                 <h2>ℹ️ 정보</h2>
@@ -718,6 +783,87 @@
         // 메시지 표시
         function showMessage(message, type) {
             const msgEl = document.getElementById('message');
+            msgEl.textContent = message;
+            msgEl.className = 'message ' + type;
+        }
+
+        // Keystore 백업 다운로드
+        async function backupKeystore() {
+            const password = atob(adminToken).split(':')[0];
+            
+            try {
+                const response = await fetch('/webjwtgen/setup?action=backup&password=' + encodeURIComponent(password));
+                
+                if (!response.ok) {
+                    const data = await response.json();
+                    showBackupMessage(data.error || '백업 실패', 'error');
+                    return;
+                }
+
+                // Blob 생성 및 다운로드
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'keystore-' + new Date().toISOString().split('T')[0] + '.jks';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showBackupMessage('✓ Keystore 백업이 다운로드되었습니다', 'success');
+            } catch (error) {
+                showBackupMessage('오류: ' + error.message, 'error');
+            }
+        }
+
+        // Keystore 복원
+        async function restoreKeystore() {
+            const fileInput = document.getElementById('keystoreFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            // 파일 형식 확인
+            if (!file.name.endsWith('.jks')) {
+                showBackupMessage('❌ .jks 파일만 업로드 가능합니다', 'error');
+                fileInput.value = '';
+                return;
+            }
+
+            const password = atob(adminToken).split(':')[0];
+            const formData = new FormData();
+            formData.append('keystoreFile', file);
+
+            try {
+                const response = await fetch('/webjwtgen/setup?action=restore&password=' + encodeURIComponent(password), {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showBackupMessage(data.message, 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showBackupMessage(data.error || '복원 실패', 'error');
+                }
+            } catch (error) {
+                showBackupMessage('오류: ' + error.message, 'error');
+            }
+
+            // 파일 입력 리셋
+            fileInput.value = '';
+        }
+
+        // 백업 관련 메시지 표시
+        function showBackupMessage(message, type) {
+            const msgEl = document.getElementById('backupMessage');
             msgEl.textContent = message;
             msgEl.className = 'message ' + type;
         }

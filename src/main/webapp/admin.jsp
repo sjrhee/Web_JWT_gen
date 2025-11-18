@@ -800,18 +800,31 @@
                     return;
                 }
 
-                // Blob 생성 및 다운로드
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'keystore-' + new Date().toISOString().split('T')[0] + '.jks';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Base64 데이터를 Blob으로 변환
+                    const binaryString = atob(data.data);
+                    const bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    const blob = new Blob([bytes], { type: 'application/octet-stream' });
+                    
+                    // 다운로드
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = data.filename || 'keystore.jks';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
 
-                showBackupMessage('✓ Keystore 백업이 다운로드되었습니다', 'success');
+                    showBackupMessage('✓ Keystore 백업이 다운로드되었습니다', 'success');
+                } else {
+                    showBackupMessage(data.error || '백업 실패', 'error');
+                }
             } catch (error) {
                 showBackupMessage('오류: ' + error.message, 'error');
             }
@@ -834,25 +847,39 @@
             }
 
             const password = atob(adminToken).split(':')[0];
-            const formData = new FormData();
-            formData.append('keystoreFile', file);
 
             try {
-                const response = await fetch('/webjwtgen/setup?action=restore&password=' + encodeURIComponent(password), {
-                    method: 'POST',
-                    body: formData
-                });
+                // 파일을 Base64로 변환
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const base64Data = e.target.result.split(',')[1]; // Data URI에서 Base64만 추출
 
-                const data = await response.json();
+                    // 서버로 전송
+                    const response = await fetch('/webjwtgen/setup?action=restore&password=' + encodeURIComponent(password), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ data: base64Data })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showBackupMessage(result.message, 'success');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 2000);
+                    } else {
+                        showBackupMessage(result.error || '복원 실패', 'error');
+                    }
+                };
                 
-                if (data.success) {
-                    showBackupMessage(data.message, 'success');
-                    setTimeout(() => {
-                        location.reload();
-                    }, 2000);
-                } else {
-                    showBackupMessage(data.error || '복원 실패', 'error');
-                }
+                reader.onerror = () => {
+                    showBackupMessage('파일 읽기 실패', 'error');
+                };
+                
+                reader.readAsDataURL(file);
             } catch (error) {
                 showBackupMessage('오류: ' + error.message, 'error');
             }

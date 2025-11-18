@@ -307,6 +307,8 @@ public class SetupServlet extends HttpServlet {
      * Keystore 백업 다운로드
      */
     public void backupKeystore(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        response.setContentType("application/json; charset=UTF-8");
+
         String password = request.getParameter("password");
         if (password == null || !verifyPassword(password)) {
             sendError(response, 401, "비밀번호가 일치하지 않습니다");
@@ -321,17 +323,22 @@ public class SetupServlet extends HttpServlet {
             return;
         }
 
-        // Keystore 파일 읽기
-        byte[] keystoreData = Files.readAllBytes(Paths.get(keystorePath));
+        try {
+            // Keystore 파일 읽기
+            byte[] keystoreData = Files.readAllBytes(Paths.get(keystorePath));
 
-        // HTTP 응답으로 파일 전송
-        response.setContentType("application/octet-stream");
-        response.setHeader("Content-Disposition", "attachment; filename=\"keystore.jks\"");
-        response.setContentLength(keystoreData.length);
+            // Base64 인코딩
+            String base64Data = Base64.toBase64String(keystoreData);
 
-        try (OutputStream os = response.getOutputStream()) {
-            os.write(keystoreData);
-            os.flush();
+            // JSON 응답
+            JsonObject result = new JsonObject();
+            result.addProperty("success", true);
+            result.addProperty("data", base64Data);
+            result.addProperty("filename", "keystore-" + new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()) + ".jks");
+            
+            response.getWriter().write(result.toString());
+        } catch (Exception e) {
+            sendError(response, 500, "백업 실패: " + e.getMessage());
         }
     }
 
@@ -347,25 +354,40 @@ public class SetupServlet extends HttpServlet {
             return;
         }
 
-        // 파일 업로드 처리 (multipart form data)
-        if (!request.getContentType().startsWith("multipart/form-data")) {
-            sendError(response, 400, "multipart/form-data 형식이 필요합니다");
+        // Base64 인코딩된 데이터 받기
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader reader = request.getReader()) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+        }
+
+        if (sb.length() == 0) {
+            sendError(response, 400, "복원할 데이터가 없습니다");
             return;
         }
 
         try {
+            // JSON 파싱
+            JsonObject json = gson.fromJson(sb.toString(), JsonObject.class);
+            String base64Data = json.get("data").getAsString();
+
+            // Base64 디코딩
+            byte[] keystoreData = Base64.decode(base64Data);
+
             String webappPath = getServletContext().getRealPath("/");
             String keystorePath = webappPath + "keystore.jks";
 
-            // 기존 백업 생성 (복원 전)
+            // 기존 백업 생성
             if (Files.exists(Paths.get(keystorePath))) {
                 String backupPath = keystorePath + ".backup";
-                Files.copy(Paths.get(keystorePath), Paths.get(backupPath), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(Paths.get(keystorePath), Paths.get(backupPath), 
+                          java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
 
-            // 업로드된 파일을 Keystore로 저장
-            ServletInputStream inputStream = request.getInputStream();
-            Files.copy(inputStream, Paths.get(keystorePath), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            // Keystore 복원
+            Files.write(Paths.get(keystorePath), keystoreData);
 
             // 응답
             JsonObject result = new JsonObject();
@@ -374,7 +396,7 @@ public class SetupServlet extends HttpServlet {
             response.getWriter().write(result.toString());
 
         } catch (Exception e) {
-            sendError(response, 500, "Keystore 복원 실패: " + e.getMessage());
+            sendError(response, 500, "복원 실패: " + e.getMessage());
         }
     }
 }

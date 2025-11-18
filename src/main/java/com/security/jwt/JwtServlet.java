@@ -28,6 +28,7 @@ public class JwtServlet extends HttpServlet {
     private PublicKey publicKey;
     private String publicKeyPem;
     private String validApiKey; // 동적으로 로드된 API Key
+    private boolean keysLoaded = false; // 키 로드 상태
     private static final Gson gson = new Gson();
 
     @Override
@@ -36,7 +37,7 @@ public class JwtServlet extends HttpServlet {
         if (Security.getProvider("BC") == null) {
             Security.addProvider(new BouncyCastleProvider());
         }
-        loadKeys();
+        // 서블릿 초기화 시에는 키를 로드하지 않음 (지연 로드)
     }
 
     /**
@@ -53,8 +54,10 @@ public class JwtServlet extends HttpServlet {
             }
 
             loadKeysFromKeystore(keystorePath, configPath);
+            keysLoaded = true;
 
         } catch (Exception e) {
+            keysLoaded = false;
             throw new RuntimeException("키 로드 실패: " + e.getMessage(), e);
         }
     }
@@ -136,6 +139,23 @@ public class JwtServlet extends HttpServlet {
         response.setContentType("application/json; charset=UTF-8");
 
         try {
+            // Keystore 상태 확인 (첫 요청 또는 키 로드 실패 시)
+            if (!keysLoaded) {
+                try {
+                    loadKeys();
+                } catch (RuntimeException e) {
+                    // Keystore가 없으면 초기화 필요 알림
+                    JsonObject error = new JsonObject();
+                    error.addProperty("success", false);
+                    error.addProperty("error", "Keystore를 찾을 수 없습니다");
+                    error.addProperty("needsSetup", true);
+                    error.addProperty("message", "초기 설정이 필요합니다. 설정 페이지로 이동하거나 Keystore를 복원하세요.");
+                    response.setStatus(503);
+                    response.getWriter().write(error.toString());
+                    return;
+                }
+            }
+
             // API Key 인증 확인
             String apiKey = request.getParameter("key");
             if (!isValidApiKey(apiKey)) {

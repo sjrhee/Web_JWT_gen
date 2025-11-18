@@ -405,7 +405,21 @@
                         displayResult(data.jwt, data.publicKey);
                         showSuccess();
                     } else {
-                        showError(data.error || 'JWT 생성 실패');
+                        // Keystore 없음 에러 처리
+                        if (data.needsSetup) {
+                            showError(data.message);
+                            // 초기화 또는 복원 선택 알림
+                            setTimeout(() => {
+                                const choice = confirm('Keystore가 없습니다.\n\n[확인] 초기 설정으로 이동\n[취소] Keystore 복원하기');
+                                if (choice) {
+                                    window.location.href = 'setup.jsp';
+                                } else {
+                                    window.location.href = 'admin.jsp';
+                                }
+                            }, 500);
+                        } else {
+                            showError(data.error || 'JWT 생성 실패');
+                        }
                     }
                 })
                 .catch(error => {
@@ -493,27 +507,9 @@
         }
 
         // 페이지 로드 시 초기화 상태 확인 (첫 로드 시에만)
+        // 이제 JWT 생성 시에 Keystore 상태를 확인하므로 여기서는 제거
         window.addEventListener('load', async () => {
-            // 이미 초기화 체크를 한 경우 다시 체크하지 않음
-            if (sessionStorage.getItem('setupChecked')) {
-                return;
-            }
-
-            try {
-                const response = await fetch('/webjwtgen/setup');
-                const data = await response.json();
-                if (!data.setupCompleted) {
-                    // 아직 초기화되지 않음 - setup.jsp로 리다이렉트
-                    window.location.href = 'setup.jsp';
-                } else {
-                    // 초기화 완료 상태를 기록
-                    sessionStorage.setItem('setupChecked', 'true');
-                }
-            } catch (error) {
-                console.log('초기화 상태 확인 실패:', error);
-                // 에러는 무시하고 계속 진행 (사용자가 이미 로그인한 상태로 가정)
-                sessionStorage.setItem('setupChecked', 'true');
-            }
+            // 빈 상태로 유지
         });
     </script>
 </body>

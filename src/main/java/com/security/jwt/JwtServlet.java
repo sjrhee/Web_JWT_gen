@@ -145,12 +145,12 @@ public class JwtServlet extends HttpServlet {
                     loadKeys();
                 } catch (RuntimeException e) {
                     // Keystore가 없으면 초기화 필요 알림
+                    response.setStatus(503);
                     JsonObject error = new JsonObject();
                     error.addProperty("success", false);
                     error.addProperty("error", "Keystore를 찾을 수 없습니다");
                     error.addProperty("needsSetup", true);
                     error.addProperty("message", "초기 설정이 필요합니다. 설정 페이지로 이동하거나 Keystore를 복원하세요.");
-                    response.setStatus(503);
                     response.getWriter().write(error.toString());
                     return;
                 }
@@ -186,7 +186,18 @@ public class JwtServlet extends HttpServlet {
             response.getWriter().write(result.toString());
 
         } catch (Exception e) {
-            sendError(response, 500, "JWT 생성 실패: " + e.getMessage());
+            e.printStackTrace();
+            try {
+                response.setContentType("application/json; charset=UTF-8");
+                response.setStatus(500);
+                JsonObject error = new JsonObject();
+                error.addProperty("success", false);
+                error.addProperty("error", "JWT 생성 실패");
+                error.addProperty("details", e.getMessage());
+                response.getWriter().write(error.toString());
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
         }
     }
 

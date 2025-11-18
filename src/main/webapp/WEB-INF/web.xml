@@ -3,5 +3,33 @@
  "http://java.sun.com/dtd/web-app_2_3.dtd" >
 
 <web-app>
-  <display-name>Archetype Created Web Application</display-name>
+  <display-name>Web JWT Generator</display-name>
+
+  <!-- JWT 생성 서블릿 -->
+  <servlet>
+    <servlet-name>JwtServlet</servlet-name>
+    <servlet-class>com.security.jwt.JwtServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>JwtServlet</servlet-name>
+    <url-pattern>/generate</url-pattern>
+  </servlet-mapping>
+
+  <!-- 설정 서블릿 -->
+  <servlet>
+    <servlet-name>SetupServlet</servlet-name>
+    <servlet-class>com.security.jwt.SetupServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>SetupServlet</servlet-name>
+    <url-pattern>/setup</url-pattern>
+  </servlet-mapping>
+
+  <!-- 세션 설정 -->
+  <session-config>
+    <cookie-secure>true</cookie-secure>
+    <cookie-http-only>true</cookie-http-only>
+    <tracking-mode>COOKIE</tracking-mode>
+  </session-config>
+
 </web-app>

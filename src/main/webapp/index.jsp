@@ -398,7 +398,17 @@
             hideMessages();
 
             fetch(`/webjwtgen/generate?key=${encodeURIComponent(apiKey)}&exp=${exp}&iss=${encodeURIComponent(iss)}&sub=${encodeURIComponent(sub)}`)
-                .then(response => response.json())
+                .then(response => {
+                    // 응답 텍스트를 먼저 읽음
+                    return response.text().then(text => {
+                        try {
+                            return JSON.parse(text);
+                        } catch (e) {
+                            console.error('JSON 파싱 실패:', text);
+                            throw new Error('서버가 유효하지 않은 응답을 반환했습니다: ' + text.substring(0, 100));
+                        }
+                    });
+                })
                 .then(data => {
                     showLoading(false);
                     if (data.success) {
@@ -424,6 +434,7 @@
                 })
                 .catch(error => {
                     showLoading(false);
+                    console.error('에러:', error);
                     showError('요청 실패: ' + error.message);
                 });
         }

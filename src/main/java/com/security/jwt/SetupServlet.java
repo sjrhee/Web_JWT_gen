@@ -1,4 +1,4 @@
-package com.example.jwt;
+package com.security.jwt;
 
 import java.io.*;
 import java.nio.file.*;

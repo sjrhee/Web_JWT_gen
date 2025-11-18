@@ -1,4 +1,4 @@
-package com.example.jwt;
+package com.security.jwt;
 
 import java.io.*;
 import java.nio.file.*;
@@ -128,38 +128,6 @@ public class JwtServlet extends HttpServlet {
         
         pem.append("-----END PUBLIC KEY-----");
         return pem.toString();
-    }
-
-    /**
-     * PEM 형식의 PKCS8 개인키 로드 (레거시 - 사용 안 함)
-     */
-    private PrivateKey loadPrivateKeyPKCS8(String pem) throws Exception {
-        String privateKeyPem = pem
-                .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replaceAll("\\s", "");
-
-        byte[] decodedKey = Base64.decode(privateKeyPem);
-        
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(decodedKey);
-        KeyFactory keyFactory = KeyFactory.getInstance("ECDSA", "BC");
-        return keyFactory.generatePrivate(spec);
-    }
-
-    /**
-     * PEM 형식의 공개키 로드 (레거시 - 사용 안 함)
-     */
-    private PublicKey loadPublicKey(String pem) throws Exception {
-        String publicKeyPem = pem
-                .replace("-----BEGIN PUBLIC KEY-----", "")
-                .replace("-----END PUBLIC KEY-----", "")
-                .replaceAll("\\s", "");
-
-        byte[] decodedKey = Base64.decode(publicKeyPem);
-        
-        X509EncodedKeySpec spec = new X509EncodedKeySpec(decodedKey);
-        KeyFactory keyFactory = KeyFactory.getInstance("ECDSA", "BC");
-        return keyFactory.generatePublic(spec);
     }
 
     @Override

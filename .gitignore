@@ -1,0 +1,15 @@
+target/
+.idea/
+*.iml
+*.class
+*.jar
+*.war
+*.zip
+.DS_Store
+.vscode/
+*.log
+node_modules/
+jwt-config.properties
+keystore.jks
+setup-completed.flag
+jwt-token.txt

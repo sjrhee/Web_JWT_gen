@@ -157,6 +157,10 @@ public class SetupServlet extends HttpServlet {
             String webappPath = getServletContext().getRealPath("/");
             deleteSetupFiles(webappPath);
 
+            // JwtServlet 서블릿 컨텍스트에 keysLoaded 플래그 리셋 요청
+            // (강제 초기화 후 다시 초기화될 때까지 JWT 생성 불가)
+            getServletContext().setAttribute("jwt_keys_loaded", false);
+
             // 응답
             JsonObject result = new JsonObject();
             result.addProperty("success", true);
@@ -388,6 +392,10 @@ public class SetupServlet extends HttpServlet {
 
             // Keystore 복원
             Files.write(Paths.get(keystorePath), keystoreData);
+
+            // JwtServlet 서블릿 컨텍스트에 keysLoaded 플래그 리셋 요청
+            // (복원 후 새로운 키 로드 필요)
+            getServletContext().setAttribute("jwt_keys_loaded", false);
 
             // 응답
             JsonObject result = new JsonObject();

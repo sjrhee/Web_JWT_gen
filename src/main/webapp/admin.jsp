@@ -766,7 +766,7 @@
                     showMessage(data.message, 'success');
                     setTimeout(() => {
                         sessionStorage.removeItem('adminToken');
-                        window.location.href = 'setup.jsp';
+                        window.location.href = 'index.jsp';
                     }, 2000);
                 } else {
                     showMessage(data.error || '초기화 실패', 'error');

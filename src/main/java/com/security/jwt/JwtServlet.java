@@ -139,6 +139,13 @@ public class JwtServlet extends HttpServlet {
         response.setContentType("application/json; charset=UTF-8");
 
         try {
+            // 강제 초기화 플래그 확인 (관리자가 강제 초기화한 경우)
+            Boolean keysLoadedFlag = (Boolean) getServletContext().getAttribute("jwt_keys_loaded");
+            if (keysLoadedFlag != null && !keysLoadedFlag) {
+                keysLoaded = false;
+                getServletContext().setAttribute("jwt_keys_loaded", null);
+            }
+
             // Keystore 상태 확인 (첫 요청 또는 키 로드 실패 시)
             if (!keysLoaded) {
                 try {

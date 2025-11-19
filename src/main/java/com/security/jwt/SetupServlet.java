@@ -371,7 +371,11 @@ public class SetupServlet extends HttpServlet {
         logger.info("Config file content:\n{}", sb.toString());
         
         try {
-            Files.write(Paths.get(configFile), sb.toString().getBytes());
+            Files.write(Paths.get(configFile), sb.toString().getBytes(), 
+                java.nio.file.StandardOpenOption.CREATE, 
+                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
+                java.nio.file.StandardOpenOption.WRITE,
+                java.nio.file.StandardOpenOption.SYNC);
             logger.info("File written successfully to: {}", configFile);
             
             // 파일 검증

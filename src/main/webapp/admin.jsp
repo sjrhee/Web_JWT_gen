@@ -71,29 +71,57 @@
                     <div id="passwordChangeMessage" class="message" style="margin-top: 10px;"></div>
                 </div>
 
-                <!-- 시스템 초기화 섹션 -->
+                <!-- Keystore 비밀번호 기능 설명 섹션 -->
                 <div class="section">
-                    <h2>⚙️ 시스템 초기화</h2>
+                    <h2>ℹ️ Keystore 비밀번호 기능</h2>
                     
-                    <div class="warning-box" style="border-left: 4px solid #ff6b6b;">
-                        <div class="warning-title" style="color: #ff6b6b;">
-                            <span class="warning-icon">🔴</span>
-                            주의
+                    <div class="info-box">
+                        <div class="info-title">
+                            <span class="info-icon">📌</span>
+                            Keystore 비밀번호의 4가지 기능
                         </div>
-                        <div class="warning-text">
-                            시스템을 초기화하면 기존 키 정보가 삭제됩니다.
-                            관리자 비밀번호로 인증 후 새로운 비밀번호로 초기화됩니다.
+                        <div class="info-list">
+                            <div class="info-item">
+                                <div class="item-number">1️⃣</div>
+                                <div class="item-content">
+                                    <strong>Keystore 접근 보호</strong>
+                                    <p>Keystore 파일에 저장된 개인키 접근을 보호합니다. JWT 생성 시 이 비밀번호로 Keystore에 접근합니다.</p>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="item-number">2️⃣</div>
+                                <div class="item-content">
+                                    <strong>Keystore 백업 검증</strong>
+                                    <p>Keystore를 백업할 때 이 비밀번호를 확인하여 권한 있는 사용자만 백업을 받을 수 있도록 보호합니다.</p>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="item-number">3️⃣</div>
+                                <div class="item-content">
+                                    <strong>Keystore 복원 검증</strong>
+                                    <p>백업 파일을 복원할 때 백업 시점의 비밀번호로 검증합니다. 올바른 비밀번호 없이는 복원할 수 없습니다.</p>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="item-number">4️⃣</div>
+                                <div class="item-content">
+                                    <strong>관리 기능 인증</strong>
+                                    <p>비밀번호 변경, Keystore 백업 등 모든 관리 기능을 수행할 때 이 비밀번호로 인증하여 보안을 보장합니다.</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div style="display: flex; gap: 10px;">
-                        <input type="password" id="resetAdminPassword" placeholder="관리자 비밀번호 (현재)" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        <input type="password" id="resetNewPassword" placeholder="새 비밀번호" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        <input type="password" id="resetConfirmPassword" placeholder="비밀번호 확인" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        <button class="btn-backup" onclick="forceReset()" style="padding: 8px 16px; background-color: #ff6b6b;">🔄 초기화</button>
+                    <div class="warning-box">
+                        <div class="warning-title">
+                            <span class="warning-icon">💡</span>
+                            중요 안내
+                        </div>
+                        <div class="warning-text">
+                            Keystore 비밀번호는 시스템의 모든 보안 기능을 제어합니다. 
+                            강력한 비밀번호를 설정하고 안전한 곳에 보관하세요.
+                        </div>
                     </div>
-                    
-                    <div id="resetMessage" class="message" style="margin-top: 10px;"></div>
                 </div>
             </div>
         </div>

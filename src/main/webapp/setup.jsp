@@ -194,12 +194,9 @@
         <div id="setupSection">
             <div class="info-box">
                 <strong>첫 시작입니다!</strong><br>
-                초기 설정을 위해 비밀번호를 입력해주세요. 이 비밀번호는 다음 두 가지 용도로 사용됩니다:
+                초기 설정을 위해 비밀번호를 입력해주세요. 이 비밀번호는 다음 용도로 사용됩니다:
                 <br><br>
                 ✅ <strong>Keystore 보호:</strong> 암호화된 키를 보호하는 비밀번호<br>
-                ✅ <strong>API Key:</strong> JWT 생성 시 인증에 사용하는 키<br>
-                <br>
-                <em>예: JWT 생성 시 입력한 비밀번호를 API Key로 사용합니다</em>
             </div>
 
             <form id="setupForm">

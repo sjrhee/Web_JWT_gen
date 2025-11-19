@@ -82,17 +82,9 @@ public class ResponseService {
     }
 
     /**
-     * Keystore 없음 응답
+     * Keystore 없음 응답 (setup.jsp로 리다이렉트)
      */
     public static void sendKeystoreNotFoundError(HttpServletResponse response) throws IOException {
-        response.setContentType("application/json; charset=UTF-8");
-        response.setStatus(503);
-        
-        JsonObject error = new JsonObject();
-        error.addProperty("success", false);
-        error.addProperty("error", "Keystore를 찾을 수 없습니다");
-        error.addProperty("needsSetup", true);
-        error.addProperty("message", "초기 설정이 필요합니다. 설정 페이지로 이동하거나 Keystore를 복원하세요.");
-        response.getWriter().write(error.toString());
+        response.sendRedirect("/webjwtgen/setup.jsp");
     }
 }

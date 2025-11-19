@@ -76,12 +76,54 @@ public class KeystoreService {
     }
 
     /**
+     * 키 엔트리의 비밀번호 변경
+     */
+    public static void changeKeyPassword(String keystorePath, String keystorePassword, 
+                                        String oldKeyPassword, String newKeyPassword) throws Exception {
+        KeyStore keystore = loadKeystore(keystorePath, keystorePassword);
+        
+        // 기존 키 엔트리 가져오기
+        PrivateKey privateKey = (PrivateKey) keystore.getKey(KEYSTORE_ALIAS, oldKeyPassword.toCharArray());
+        if (privateKey == null) {
+            throw new Exception("Keystore에서 개인키를 찾을 수 없습니다: " + KEYSTORE_ALIAS);
+        }
+        
+        // 인증서 가져오기
+        java.security.cert.Certificate[] chain = keystore.getCertificateChain(KEYSTORE_ALIAS);
+        if (chain == null) {
+            throw new Exception("Keystore에서 인증서 체인을 찾을 수 없습니다: " + KEYSTORE_ALIAS);
+        }
+        
+        // 새 비밀번호로 키 엔트리 다시 저장
+        keystore.setKeyEntry(KEYSTORE_ALIAS, privateKey, newKeyPassword.toCharArray(), chain);
+        
+        // Keystore 저장
+        try (FileOutputStream fos = new FileOutputStream(keystorePath)) {
+            keystore.store(fos, keystorePassword.toCharArray());
+        }
+    }
+
+    /**
+     * Keystore 비밀번호 검증 (실제 Keystore 파일로 검증)
+     */
+    public static boolean verifyKeystorePassword(String keystorePath, String password) {
+        try {
+            KeyStore keystore = KeyStore.getInstance("JKS");
+            try (FileInputStream fis = new FileInputStream(keystorePath)) {
+                keystore.load(fis, password.toCharArray());
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
      * 설정 파일 저장
      */
-    public static void saveConfig(String configPath, String apiKey, String keystorePassword) throws IOException {
+    public static void saveConfig(String configPath, String keystorePassword) throws IOException {
         StringBuilder sb = new StringBuilder();
         sb.append("# JWT Configuration\n");
-        sb.append("api.key=").append(apiKey).append("\n");
         sb.append("keystore.password=").append(keystorePassword).append("\n");
         sb.append("keystore.alias=").append(KEYSTORE_ALIAS).append("\n");
         sb.append("keystore.path=").append(new File(configPath).getParent() + File.separator + "keystore.jks").append("\n");

@@ -23,11 +23,18 @@ public class JwtServlet extends HttpServlet {
     private static final Logger logger = LogManager.getLogger(JwtServlet.class);
     private PrivateKey privateKey;
     private String publicKeyPem;
-    private String validApiKey;
     private boolean keysLoaded = false;
+    
+    static {
+        // 클래스 로드 시 BouncyCastle Security Provider 등록
+        if (Security.getProvider("BC") == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+    }
 
     @Override
     public void init() throws ServletException {
+        // init에서도 한번 더 확인
         if (Security.getProvider("BC") == null) {
             Security.addProvider(new BouncyCastleProvider());
         }
@@ -72,14 +79,6 @@ public class JwtServlet extends HttpServlet {
             publicKeyPem = JWTService.convertPublicKeyToPem(publicKey);
             logger.info("Public Key PEM 변환 성공");
 
-            logger.info("loadConfig 호출");
-            validApiKey = KeystoreService.loadConfig(configPath).getProperty("api.key");
-            if (validApiKey == null || validApiKey.isEmpty()) {
-                logger.error("API Key가 null 또는 empty");
-                throw new RuntimeException("API Key가 설정되지 않았습니다.");
-            }
-            logger.info("API Key 로드 성공: " + (validApiKey != null ? "exists" : "null"));
-
             keysLoaded = true;
             logger.info("=== loadKeys END (SUCCESS) ===");
         } catch (Exception e) {
@@ -115,31 +114,22 @@ public class JwtServlet extends HttpServlet {
                 }
             }
 
-            // API Key 인증
-            String apiKey = request.getParameter("key");
-            logger.info("Step 3: API Key 검증 - 입력: " + (apiKey != null ? "exists" : "null"));
-            if (!isValidApiKey(apiKey)) {
-                logger.warn("Step 3.1: API Key 검증 실패");
-                ResponseService.sendError(response, 401, "API Key가 없거나 유효하지 않습니다");
-                return;
-            }
-
             // 파라미터 검증
             String exp = request.getParameter("exp");
             String iss = request.getParameter("iss");
             String sub = request.getParameter("sub");
-            logger.info("Step 4: JWT 파라미터 검증 - exp: " + exp + ", iss: " + iss + ", sub: " + sub);
+            logger.info("Step 3: JWT 파라미터 검증 - exp: " + exp + ", iss: " + iss + ", sub: " + sub);
 
             if (!JWTService.validateJWTParams(exp, iss, sub)) {
-                logger.warn("Step 4.1: JWT 파라미터 검증 실패");
+                logger.warn("Step 3.1: JWT 파라미터 검증 실패");
                 ResponseService.sendError(response, 400, "exp, iss, sub 파라미터는 필수입니다");
                 return;
             }
 
             // JWT 생성
-            logger.info("Step 5: JWT 생성 시작");
+            logger.info("Step 4: JWT 생성 시작");
             String jwt = JWTService.generateJWT(exp, iss, sub, privateKey);
-            logger.info("Step 5.1: JWT 생성 성공");
+            logger.info("Step 4.1: JWT 생성 성공");
             ResponseService.sendJWTResponse(response, jwt, publicKeyPem);
             logger.info("=== JWT 생성 요청 END (SUCCESS) ===");
 
@@ -148,10 +138,6 @@ public class JwtServlet extends HttpServlet {
             e.printStackTrace();
             ResponseService.sendError(response, 500, "JWT 생성 실패: " + e.getMessage());
         }
-    }
-
-    private boolean isValidApiKey(String apiKey) {
-        return apiKey != null && apiKey.equals(validApiKey);
     }
 
     @Override

@@ -2,17 +2,26 @@ package com.security.jwt.service;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.Signature;
 
 import com.google.gson.JsonObject;
 import org.bouncycastle.asn1.ASN1Integer;
 import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.encoders.Base64;
 
 /**
  * JWT 생성 및 검증 서비스
  */
 public class JWTService {
+    
+    static {
+        // BouncyCastle Security Provider 등록
+        if (Security.getProvider("BC") == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+    }
 
     /**
      * JWT 토큰 생성

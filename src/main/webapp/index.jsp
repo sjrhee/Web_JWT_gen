@@ -1,4 +1,17 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ page import="java.nio.file.Files" %>
+<%@ page import="java.nio.file.Paths" %>
+<%
+    // Keystore 파일 확인
+    String webappPath = application.getRealPath("/");
+    String keystorePath = webappPath + "keystore.jks";
+    
+    // Keystore가 없으면 setup.jsp로 리다이렉트
+    if (!Files.exists(Paths.get(keystorePath))) {
+        response.sendRedirect("setup.jsp");
+        return;
+    }
+%>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -269,12 +282,6 @@
                 <h2>JWT 생성</h2>
 
                 <div class="form-group">
-                    <label for="apiKey">API Key *</label>
-                    <input type="password" id="apiKey" name="apiKey" placeholder="API Key 입력" required>
-                    <div class="help-text">토큰 생성을 위한 인증 키</div>
-                </div>
-
-                <div class="form-group">
                     <label for="expYear">만료 시간 (Expiration) *</label>
                     <div style="display: grid; grid-template-columns: 1.2fr 0.9fr 0.9fr 1fr; gap: 8px;">
                         <div>
@@ -374,7 +381,6 @@
         });
 
         function generateJWT() {
-            const apiKey = document.getElementById('apiKey').value;
             const year = document.getElementById('expYear').value;
             const month = document.getElementById('expMonth').value;
             const day = document.getElementById('expDay').value;
@@ -382,7 +388,7 @@
             const iss = document.getElementById('iss').value;
             const sub = document.getElementById('sub').value;
 
-            if (!apiKey || !year || !month || !day || !time || !iss || !sub) {
+            if (!year || !month || !day || !time || !iss || !sub) {
                 showError('모든 필드를 입력해주세요.');
                 return;
             }
@@ -397,7 +403,7 @@
             showLoading(true);
             hideMessages();
 
-            fetch(`/webjwtgen/generate?key=${encodeURIComponent(apiKey)}&exp=${exp}&iss=${encodeURIComponent(iss)}&sub=${encodeURIComponent(sub)}`)
+            fetch(`/webjwtgen/generate?exp=${exp}&iss=${encodeURIComponent(iss)}&sub=${encodeURIComponent(sub)}`)
                 .then(response => {
                     // 응답 텍스트를 먼저 읽음
                     return response.text().then(text => {

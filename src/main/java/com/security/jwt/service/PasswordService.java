@@ -86,22 +86,6 @@ public class PasswordService {
     }
 
     /**
-     * API Key 검증
-     */
-    public static boolean isValidApiKey(String apiKey, String configPath) throws Exception {
-        if (!Files.exists(Paths.get(configPath))) {
-            return false;
-        }
-
-        try (FileInputStream fis = new FileInputStream(configPath)) {
-            Properties props = new Properties();
-            props.load(fis);
-            String storedApiKey = props.getProperty("api.key");
-            return storedApiKey != null && storedApiKey.equals(apiKey);
-        }
-    }
-
-    /**
      * 저장된 비밀번호 조회
      */
     public static String getStoredPassword(String configPath) throws Exception {

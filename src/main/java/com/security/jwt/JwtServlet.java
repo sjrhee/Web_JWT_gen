@@ -43,15 +43,13 @@ public class JwtServlet extends HttpServlet {
     /**
      * 키 로드 (Keystore에서)
      */
-    private void loadKeys() throws Exception {
+    private void loadKeys(HttpSession session) throws Exception {
         logger.info("=== loadKeys START ===");
         String webappPath = getServletContext().getRealPath("/");
         String keystorePath = webappPath + "keystore.jks";
-        String configPath = webappPath + "jwt-config.properties";
 
         logger.info("webappPath: " + webappPath);
         logger.info("keystorePath: " + keystorePath);
-        logger.info("configPath: " + configPath);
 
         if (!FileService.fileExists(keystorePath)) {
             logger.error("Keystore 파일 없음: " + keystorePath);
@@ -59,13 +57,15 @@ public class JwtServlet extends HttpServlet {
         }
 
         try {
-            logger.info("getStoredPassword 호출");
-            String storedPassword = PasswordService.getStoredPassword(configPath);
-            logger.info("storedPassword 길이: " + (storedPassword != null ? storedPassword.length() : "null"));
+            logger.info("Getting keystore password from session");
+            String keystorePassword = PasswordService.getKeystorePasswordFromSession(session);
             
-            logger.info("getKeystorePasswordFromEnv 호출");
-            String keystorePassword = PasswordService.getKeystorePasswordFromEnv(storedPassword);
-            logger.info("keystorePassword 길이: " + (keystorePassword != null ? keystorePassword.length() : "null"));
+            if (keystorePassword == null) {
+                logger.error("Keystore password not found in session");
+                throw new RuntimeException("세션에서 Keystore 비밀번호를 찾을 수 없습니다. 초기 설정을 다시 진행하세요.");
+            }
+            
+            logger.info("keystorePassword 길이: " + keystorePassword.length());
 
             logger.info("KeystoreService.getPrivateKey 호출");
             privateKey = KeystoreService.getPrivateKey(keystorePath, keystorePassword, keystorePassword);
@@ -94,6 +94,13 @@ public class JwtServlet extends HttpServlet {
         logger.info("=== JWT 생성 요청 START ===");
         try {
             logger.info("Step 1: 키 로드 상태 확인");
+            HttpSession session = request.getSession(false);
+            if (session == null) {
+                logger.error("Session not found");
+                ResponseService.sendError(response, 400, "세션이 없습니다. 초기 설정을 진행하세요.");
+                return;
+            }
+            
             // 키 로드 상태 확인
             Boolean keysLoadedFlag = (Boolean) getServletContext().getAttribute("jwt_keys_loaded");
             if (keysLoadedFlag != null && !keysLoadedFlag) {
@@ -105,7 +112,7 @@ public class JwtServlet extends HttpServlet {
             if (!keysLoaded) {
                 logger.info("Step 2: 키 로드 시작");
                 try {
-                    loadKeys();
+                    loadKeys(session);
                     logger.info("Step 2.1: 키 로드 성공");
                 } catch (RuntimeException e) {
                     logger.error("Step 2.2: 키 로드 실패", e);

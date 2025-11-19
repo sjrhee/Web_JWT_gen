@@ -172,8 +172,9 @@ public class SetupServlet extends HttpServlet {
             // 2. EC256 키쌍 생성 및 Keystore에 저장
             generateAndStoreEC256Keys(keystorePath, password);
 
-            // 3. API Key 저장 (입력한 비밀번호를 API Key로 사용)
-            storeApiKey(keystorePath, password, password);
+            // 3. 비밀번호를 세션에 저장 (파일 저장 안 함)
+            HttpSession session = request.getSession(true);
+            storeKeystorePasswordInSession(session, password);
 
             // 4. 초기화 완료 플래그 생성
             createSetupFlag();
@@ -205,8 +206,8 @@ public class SetupServlet extends HttpServlet {
     private void deleteSetupFiles(String webappPath) throws IOException {
         String[] filesToDelete = {
             webappPath + "keystore.jks",
-            webappPath + "jwt-config.properties",
             webappPath + "setup-completed.flag"
+            // jwt-config.properties는 더 이상 사용하지 않음
         };
 
         for (String filePath : filesToDelete) {
@@ -269,47 +270,17 @@ public class SetupServlet extends HttpServlet {
     }
 
     /**
-     * API Key를 Keystore에 저장 (비밀 엔트리로)
-     * 주: Java Keystore는 비밀 저장을 위해 SecretKeyEntry를 사용
+     * Keystore 비밀번호를 세션에 저장
+     * 설정 파일에는 저장하지 않음 (보안)
      */
-    private void storeApiKey(String keystorePath, String keystorePassword, String apiKey) throws Exception {
-        // 설정 파일로 저장 (비밀번호만 저장)
-        String configFile = new File(keystorePath).getParent() + File.separator + "jwt-config.properties";
-        
-        StringBuilder sb = new StringBuilder();
-        sb.append("# JWT Configuration\n");
-        sb.append("keystore.path=").append(keystorePath).append("\n");
-        sb.append("keystore.password=").append(keystorePassword).append("\n");
-        sb.append("keystore.alias=ec256-jwt\n");
-        
+    private void storeKeystorePasswordInSession(HttpSession session, String keystorePassword) throws Exception {
         logger.info("=== storeApiKey START ===");
-        logger.info("Config file path: {}", configFile);
-        logger.info("Keystore password: {}", keystorePassword);
-        logger.info("Config file content:\n{}", sb.toString());
+        logger.info("Storing keystore password in session");
         
-        try {
-            Files.write(Paths.get(configFile), sb.toString().getBytes(), 
-                java.nio.file.StandardOpenOption.CREATE, 
-                java.nio.file.StandardOpenOption.TRUNCATE_EXISTING,
-                java.nio.file.StandardOpenOption.WRITE,
-                java.nio.file.StandardOpenOption.SYNC);
-            logger.info("File written successfully to: {}", configFile);
-            
-            // 파일 검증
-            String verifyContent = new String(Files.readAllBytes(Paths.get(configFile)));
-            logger.info("Verification - Config file content after write:\n{}", verifyContent);
-            
-            if (verifyContent.contains("keystore.password=" + keystorePassword)) {
-                logger.info("✓ Password update verified in file");
-            } else {
-                logger.warn("✗ Password update NOT found in file after write!");
-            }
-        } catch (Exception e) {
-            logger.error("Error writing to config file: {}", configFile, e);
-            logger.error("Exception details: {}", e.getClass().getName());
-            throw e;
-        }
+        session.setAttribute("keystorePassword", keystorePassword);
+        session.setMaxInactiveInterval(30 * 60); // 30분
         
+        logger.info("Keystore password stored in session");
         logger.info("=== storeApiKey END ===");
     }
 
@@ -351,12 +322,11 @@ public class SetupServlet extends HttpServlet {
         response.setContentType("application/json; charset=UTF-8");
 
         String webappPath = getServletContext().getRealPath("/");
-        String configPath = webappPath + "jwt-config.properties";
+        String keystorePath = webappPath + "keystore.jks";
         String password = request.getParameter("password");
         
         logger.info("=== backupKeystore START ===");
         logger.info("WebappPath: {}", webappPath);
-        logger.info("ConfigPath: {}", configPath);
         
         // 비밀번호 검증
         if (password == null || password.isEmpty()) {
@@ -367,7 +337,6 @@ public class SetupServlet extends HttpServlet {
         
         // Keystore 비밀번호 검증
         try {
-            String keystorePath = webappPath + "keystore.jks";
             if (!KeystoreService.verifyKeystorePassword(keystorePath, password)) {
                 logger.warn("비밀번호 검증 실패");
                 sendError(response, 401, "비밀번호가 일치하지 않습니다");
@@ -380,8 +349,6 @@ public class SetupServlet extends HttpServlet {
         }
         
         logger.info("Keystore 백업 진행");
-
-        String keystorePath = webappPath + "keystore.jks";
 
         if (!Files.exists(Paths.get(keystorePath))) {
             sendError(response, 404, "Keystore를 찾을 수 없습니다");
@@ -415,7 +382,6 @@ public class SetupServlet extends HttpServlet {
 
         String webappPath = getServletContext().getRealPath("/");
         String keystorePath = webappPath + "keystore.jks";
-        String configPath = webappPath + "jwt-config.properties";
         
         logger.info("=== restoreKeystore START ===");
 
@@ -481,9 +447,10 @@ public class SetupServlet extends HttpServlet {
             Files.write(Paths.get(keystorePath), keystoreData);
             logger.info("Keystore 복원 완료");
             
-            // 설정 파일 업데이트 (복원된 Keystore의 비밀번호로)
-            KeystoreService.saveConfig(configPath, password);
-            logger.info("설정 파일 업데이트 완료 (복원된 Keystore 비밀번호)");
+            // 비밀번호를 세션에 저장 (파일 저장 제거)
+            HttpSession session = request.getSession(true);
+            storeKeystorePasswordInSession(session, password);
+            logger.info("복원된 Keystore 비밀번호를 세션에 저장");
 
             // JwtServlet 서블릿 컨텍스트에 keysLoaded 플래그 리셋 요청
             getServletContext().setAttribute("jwt_keys_loaded", false);
@@ -507,7 +474,6 @@ public class SetupServlet extends HttpServlet {
     private void changeKeystorePassword(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String webappPath = getServletContext().getRealPath("/");
         String keystorePath = webappPath + "keystore.jks";
-        String configPath = webappPath + "jwt-config.properties";
         
         String currentPassword = request.getParameter("currentPassword");
         String newPassword = request.getParameter("newPassword");
@@ -557,9 +523,10 @@ public class SetupServlet extends HttpServlet {
             KeystoreService.changeKeyPassword(keystorePath, newPassword, currentPassword, newPassword);
             logger.info("키 엔트리 비밀번호 변경 완료");
             
-            // 설정 파일 업데이트
-            KeystoreService.saveConfig(configPath, newPassword);
-            logger.info("설정 파일 업데이트 완료");
+            // 새 비밀번호를 세션에 저장 (파일 저장 제거)
+            HttpSession session = request.getSession(true);
+            storeKeystorePasswordInSession(session, newPassword);
+            logger.info("새 비밀번호를 세션에 저장");
             
             // 캐시 리셋
             getServletContext().setAttribute("jwt_keys_loaded", false);
@@ -602,7 +569,6 @@ public class SetupServlet extends HttpServlet {
         
         String webappPath = getServletContext().getRealPath("/");
         String keystorePath = webappPath + "keystore.jks";
-        String configPath = webappPath + "jwt-config.properties";
         
         // 현재 비밀번호로 관리자 권한 확인
         if (!KeystoreService.verifyKeystorePassword(keystorePath, adminPassword)) {
@@ -630,9 +596,10 @@ public class SetupServlet extends HttpServlet {
             generateAndStoreEC256Keys(keystorePath, newPassword);
             logger.info("EC256 키쌍 생성");
             
-            // 3. 설정 저장
-            storeApiKey(keystorePath, newPassword, newPassword);
-            logger.info("설정 저장");
+            // 3. 비밀번호를 세션에 저장
+            HttpSession session = request.getSession(true);
+            storeKeystorePasswordInSession(session, newPassword);
+            logger.info("새 비밀번호를 세션에 저장");
             
             // 4. 캐시 리셋
             getServletContext().setAttribute("jwt_keys_loaded", false);

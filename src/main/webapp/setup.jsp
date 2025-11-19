@@ -27,7 +27,7 @@
             border-radius: 10px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             padding: 40px;
-            max-width: 400px;
+            max-width: 420px;
             width: 100%;
         }
 
@@ -197,6 +197,7 @@
                 초기 설정을 위해 비밀번호를 입력해주세요. 이 비밀번호는 다음 용도로 사용됩니다:
                 <br><br>
                 ✅ <strong>Keystore 보호:</strong> 암호화된 키를 보호하는 비밀번호<br>
+                ✅ <strong>힌트:</strong> 초기화 이후 관리자 기능에서 <strong>백업 Keystore를 복원</strong>할 수 있습니다.<br>
             </div>
 
             <form id="setupForm">
@@ -230,47 +231,38 @@
             </form>
         </div>
 
-        <!-- 강제 초기화 섹션 (이미 초기화된 경우) -->
-        <div id="forceResetSection" style="display: none;">
-            <div class="info-box" style="background: #fff3cd; border-color: #ffc107; color: #856404;">
-                <strong>⚠️ 주의사항</strong><br>
-                이미 초기화되었습니다. 강제 초기화를 하면 모든 설정과 키가 삭제됩니다.
-                <br><br>
-                이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?
-            </div>
-
-            <form id="forceResetForm">
-                <div class="form-group">
-                    <label for="resetPassword">현재 비밀번호</label>
-                    <input type="password" id="resetPassword" name="resetPassword" placeholder="현재 비밀번호 입력" required>
-                </div>
-
-                <div class="button-group">
-                    <button type="submit" class="btn-setup" id="forceResetBtn" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">강제 초기화</button>
-                    <button type="button" class="btn-setup" onclick="location.href='index.jsp'" style="background: #6c757d;">취소</button>
-                </div>
-
-                <div class="loading" id="forceResetLoading">
-                    <div class="spinner"></div>
-                    <p style="margin-top: 10px; color: #666; font-size: 14px;">초기화 중...</p>
-                </div>
-
-                <div class="message" id="forceResetMessage"></div>
-            </form>
-        </div>
-
     <script>
         // 초기화 상태
         let setupInProgress = false;
-        let isAlreadySetup = false;
+
+        // 페이지 로드 시 초기화 상태 확인
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('/webjwtgen/setup');
+                if (!response.ok) {
+                    throw new Error(`Status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log('Setup status check:', data);
+                
+                if (data.setupCompleted) {
+                    // 이미 초기화됨 - admin.jsp로 리다이렉트
+                    alert('이미 초기화되었습니다. 관리 페이지로 이동합니다.');
+                    window.location.href = 'admin.jsp';
+                    return;
+                }
+            } catch (error) {
+                console.log('초기화 상태 확인 실패:', error);
+            }
+        });
 
         // 초기 설정 폼 제출
         document.getElementById('setupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // 이미 설정 중이거나 이미 설정되었으면 중단
-            if (setupInProgress || isAlreadySetup) {
-                showMessage('이미 초기화되었거나 처리 중입니다', 'error');
+            // 이미 설정 중이면 중단
+            if (setupInProgress) {
+                showMessage('처리 중입니다', 'error');
                 return;
             }
 
@@ -327,7 +319,6 @@
                 loadingEl.style.display = 'none';
 
                 if (data.success) {
-                    isAlreadySetup = true;
                     setupBtn.style.display = 'none';
                     redirectInfo.style.display = 'block';
                     // 3초 후 자동 이동
@@ -348,103 +339,12 @@
             }
         });
 
-        // 강제 초기화 폼 제출
-        document.getElementById('forceResetForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const password = document.getElementById('resetPassword').value;
-            const messageEl = document.getElementById('forceResetMessage');
-            const loadingEl = document.getElementById('forceResetLoading');
-            const resetBtn = document.getElementById('forceResetBtn');
-
-            if (!password) {
-                showForceResetMessage('비밀번호를 입력해주세요', 'error');
-                return;
-            }
-
-            // 로딩 상태
-            loadingEl.style.display = 'block';
-            messageEl.style.display = 'none';
-            resetBtn.disabled = true;
-
-            try {
-                const response = await fetch('/webjwtgen/setup?password=' + encodeURIComponent(password) + '&confirm=FORCE_RESET_CONFIRMED', {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    }
-                });
-
-                console.log('Force reset response status:', response.status);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                console.log('Force reset response:', data);
-                
-                loadingEl.style.display = 'none';
-
-                if (data.success) {
-                    showForceResetMessage('✅ ' + data.message, 'success');
-                    // 2초 후 setup 페이지 새로고침
-                    setTimeout(() => {
-                        location.reload();
-                    }, 2000);
-                } else {
-                    showForceResetMessage(data.error || '강제 초기화 실패', 'error');
-                    resetBtn.disabled = false;
-                }
-            } catch (error) {
-                loadingEl.style.display = 'none';
-                console.error('Force reset error:', error);
-                showForceResetMessage('오류: ' + error.message, 'error');
-                resetBtn.disabled = false;
-            }
-        });
-
         function showMessage(message, type) {
             const messageEl = document.getElementById('message');
             messageEl.textContent = message;
             messageEl.className = 'message ' + type;
             messageEl.style.display = 'block';
         }
-
-        function showForceResetMessage(message, type) {
-            const messageEl = document.getElementById('forceResetMessage');
-            messageEl.textContent = message;
-            messageEl.className = 'message ' + type;
-            messageEl.style.display = 'block';
-        }
-
-        // 페이지 로드 시 초기화 상태 확인
-        window.addEventListener('load', async () => {
-            try {
-                const response = await fetch('/webjwtgen/setup');
-                if (!response.ok) {
-                    throw new Error(`Status: ${response.status}`);
-                }
-                const data = await response.json();
-                console.log('Setup status check:', data);
-                
-                if (data.setupCompleted) {
-                    // 이미 초기화됨 - 강제 초기화 섹션 표시
-                    isAlreadySetup = true;
-                    document.getElementById('setupSection').style.display = 'none';
-                    document.getElementById('forceResetSection').style.display = 'block';
-                } else {
-                    // 초기화되지 않음 - 초기 설정 섹션 표시
-                    document.getElementById('setupSection').style.display = 'block';
-                    document.getElementById('forceResetSection').style.display = 'none';
-                }
-            } catch (error) {
-                console.log('초기화 상태 확인 실패:', error);
-                // 에러가 발생했을 경우 초기 설정 폼 표시
-                document.getElementById('setupSection').style.display = 'block';
-                document.getElementById('forceResetSection').style.display = 'none';
-            }
-        });
     </script>
 </body>
 </html>

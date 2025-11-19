@@ -284,7 +284,7 @@
                 <div class="form-group">
                     <label for="password">Keystore 비밀번호 *</label>
                     <input type="password" id="password" name="password" placeholder="Keystore 비밀번호" required>
-                    <div class="help-text">시스템 초기화 시 설정한 비밀번호</div>
+                    <div class="help-text">현재 Keystore에 설정된 비밀번호</div>
                 </div>
 
                 <div class="form-group">
@@ -318,7 +318,7 @@
                 <div class="form-group">
                     <label for="sub">주제 (Subject) *</label>
                     <input type="text" id="sub" name="sub" placeholder="user-123" value="user-123" required>
-                    <div class="help-text">토큰이 관하는 주체 (사용자 ID 등)</div>
+                    <div class="help-text">토큰의 사용 주체 (사용자 ID 등)</div>
                 </div>
 
                 <button onclick="generateJWT()">JWT 생성</button>

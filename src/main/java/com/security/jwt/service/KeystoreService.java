@@ -4,7 +4,6 @@ import java.io.*;
 import java.nio.file.*;
 import java.security.*;
 import java.security.cert.Certificate;
-import java.util.Properties;
 
 /**
  * Keystore 관리 서비스
@@ -116,41 +115,5 @@ public class KeystoreService {
         } catch (Exception e) {
             return false;
         }
-    }
-
-    /**
-     * 설정 파일 저장
-     */
-    public static void saveConfig(String configPath, String keystorePassword) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        sb.append("# JWT Configuration\n");
-        sb.append("keystore.password=").append(keystorePassword).append("\n");
-        sb.append("keystore.alias=").append(KEYSTORE_ALIAS).append("\n");
-        sb.append("keystore.path=").append(new File(configPath).getParent() + File.separator + "keystore.jks").append("\n");
-        
-        Files.write(Paths.get(configPath), sb.toString().getBytes());
-    }
-
-    /**
-     * 설정 파일 로드
-     */
-    public static Properties loadConfig(String configPath) throws IOException {
-        Properties props = new Properties();
-        if (Files.exists(Paths.get(configPath))) {
-            String content = new String(Files.readAllBytes(Paths.get(configPath)));
-            for (String line : content.split("\n")) {
-                line = line.trim();
-                if (line.isEmpty() || line.startsWith("#")) {
-                    continue;
-                }
-                int idx = line.indexOf('=');
-                if (idx > 0) {
-                    String key = line.substring(0, idx);
-                    String value = line.substring(idx + 1);
-                    props.setProperty(key, value);
-                }
-            }
-        }
-        return props;
     }
 }

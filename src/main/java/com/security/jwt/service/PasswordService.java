@@ -1,9 +1,6 @@
 package com.security.jwt.service;
 
-import java.io.FileInputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.Properties;
+import javax.servlet.http.HttpSession;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -12,61 +9,6 @@ import org.apache.logging.log4j.Logger;
  */
 public class PasswordService {
     private static final Logger logger = LogManager.getLogger(PasswordService.class);
-
-    /**
-     * 비밀번호 검증
-     */
-    public static boolean verifyPassword(String inputPassword, String configPath) throws Exception {
-        logger.debug("=== verifyPassword START ===");
-        logger.debug("ConfigPath: {}", configPath);
-        logger.debug("InputPassword length: {}", inputPassword != null ? inputPassword.length() : "null");
-        
-        if (!Files.exists(Paths.get(configPath))) {
-            logger.error("Config file not found: {}", configPath);
-            logger.debug("=== verifyPassword END (file not found) ===");
-            return false;
-        }
-
-        try {
-            String content = new String(Files.readAllBytes(Paths.get(configPath)), "UTF-8");
-            logger.debug("Config file content length: {}", content.length());
-            logger.debug("Config file content:\n{}", content);
-            
-            String[] lines = content.split("\n");
-            logger.debug("Number of lines in config: {}", lines.length);
-            
-            for (int i = 0; i < lines.length; i++) {
-                String line = lines[i];
-                logger.debug("Line {}: [{}]", i, line);
-                
-                // \r, \n 모두 제거
-                line = line.replaceAll("[\r\n]", "").trim();
-                logger.debug("Line {} after cleanup: [{}]", i, line);
-                
-                if (line.startsWith("keystore.password=")) {
-                    String storedPassword = line.substring("keystore.password=".length()).trim();
-                    logger.debug("Found keystore.password line");
-                    logger.debug("Stored password: [{}]", storedPassword);
-                    logger.debug("Stored password length: {}", storedPassword.length());
-                    logger.debug("Input password: [{}]", inputPassword);
-                    logger.debug("Input password length: {}", inputPassword.length());
-                    logger.debug("Passwords match: {}", storedPassword.equals(inputPassword));
-                    
-                    if (storedPassword.equals(inputPassword)) {
-                        logger.info("Password verification SUCCESS");
-                        logger.debug("=== verifyPassword END (match) ===");
-                        return true;
-                    }
-                }
-            }
-            logger.warn("keystore.password line not found in config file");
-        } catch (Exception e) {
-            logger.error("Exception in verifyPassword", e);
-            e.printStackTrace();
-        }
-        logger.debug("=== verifyPassword END (no match) ===");
-        return false;
-    }
 
     /**
      * 비밀번호 유효성 확인 (8자 이상)
@@ -86,25 +28,30 @@ public class PasswordService {
     }
 
     /**
-     * 저장된 비밀번호 조회
-     */
-    public static String getStoredPassword(String configPath) throws Exception {
-        if (!Files.exists(Paths.get(configPath))) {
-            return null;
-        }
-
-        try (FileInputStream fis = new FileInputStream(configPath)) {
-            Properties props = new Properties();
-            props.load(fis);
-            return props.getProperty("keystore.password");
-        }
-    }
-
-    /**
      * 환경 변수에서 Keystore 비밀번호 조회
      */
     public static String getKeystorePasswordFromEnv(String defaultPassword) {
         String envPassword = System.getenv("KEYSTORE_PASSWORD");
         return (envPassword != null && !envPassword.isEmpty()) ? envPassword : defaultPassword;
+    }
+
+    /**
+     * 세션에서 Keystore 비밀번호 조회
+     */
+    public static String getKeystorePasswordFromSession(HttpSession session) {
+        if (session == null) {
+            logger.warn("Session is null");
+            return null;
+        }
+        
+        Object passwordObj = session.getAttribute("keystorePassword");
+        if (passwordObj != null && passwordObj instanceof String) {
+            String password = (String) passwordObj;
+            logger.debug("Retrieved keystore password from session, length: {}", password.length());
+            return password;
+        }
+        
+        logger.warn("Keystore password not found in session");
+        return null;
     }
 }

@@ -282,6 +282,12 @@
                 <h2>JWT 생성</h2>
 
                 <div class="form-group">
+                    <label for="password">Keystore 비밀번호 *</label>
+                    <input type="password" id="password" name="password" placeholder="Keystore 비밀번호" required>
+                    <div class="help-text">시스템 초기화 시 설정한 비밀번호</div>
+                </div>
+
+                <div class="form-group">
                     <label for="expYear">만료 시간 (Expiration) *</label>
                     <div style="display: grid; grid-template-columns: 1.2fr 0.9fr 0.9fr 1fr; gap: 8px;">
                         <div>
@@ -381,6 +387,7 @@
         });
 
         function generateJWT() {
+            const password = document.getElementById('password').value;
             const year = document.getElementById('expYear').value;
             const month = document.getElementById('expMonth').value;
             const day = document.getElementById('expDay').value;
@@ -388,7 +395,7 @@
             const iss = document.getElementById('iss').value;
             const sub = document.getElementById('sub').value;
 
-            if (!year || !month || !day || !time || !iss || !sub) {
+            if (!password || !year || !month || !day || !time || !iss || !sub) {
                 showError('모든 필드를 입력해주세요.');
                 return;
             }
@@ -403,7 +410,7 @@
             showLoading(true);
             hideMessages();
 
-            fetch(`/webjwtgen/generate?exp=${exp}&iss=${encodeURIComponent(iss)}&sub=${encodeURIComponent(sub)}`)
+            fetch(`/webjwtgen/generate?exp=${exp}&iss=${encodeURIComponent(iss)}&sub=${encodeURIComponent(sub)}&password=${encodeURIComponent(password)}`)
                 .then(response => {
                     // 응답 텍스트를 먼저 읽음
                     return response.text().then(text => {

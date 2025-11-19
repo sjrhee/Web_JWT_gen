@@ -114,22 +114,47 @@ public class JwtServlet extends HttpServlet {
                 }
             }
 
+            // Keystore 비밀번호 검증
+            String password = request.getParameter("password");
+            logger.info("Step 3: Keystore 비밀번호 검증");
+            
+            if (password == null || password.isEmpty()) {
+                logger.warn("Step 3.1: 비밀번호 미제공");
+                ResponseService.sendError(response, 400, "Keystore 비밀번호를 입력해주세요");
+                return;
+            }
+            
+            try {
+                String webappPath = getServletContext().getRealPath("/");
+                String keystorePath = webappPath + "keystore.jks";
+                if (!KeystoreService.verifyKeystorePassword(keystorePath, password)) {
+                    logger.warn("Step 3.2: 비밀번호 검증 실패");
+                    ResponseService.sendError(response, 401, "Keystore 비밀번호가 일치하지 않습니다");
+                    return;
+                }
+                logger.info("Step 3.3: 비밀번호 검증 성공");
+            } catch (Exception e) {
+                logger.error("Step 3.4: 비밀번호 검증 중 오류", e);
+                ResponseService.sendError(response, 401, "비밀번호 검증 실패");
+                return;
+            }
+
             // 파라미터 검증
             String exp = request.getParameter("exp");
             String iss = request.getParameter("iss");
             String sub = request.getParameter("sub");
-            logger.info("Step 3: JWT 파라미터 검증 - exp: " + exp + ", iss: " + iss + ", sub: " + sub);
+            logger.info("Step 4: JWT 파라미터 검증 - exp: " + exp + ", iss: " + iss + ", sub: " + sub);
 
             if (!JWTService.validateJWTParams(exp, iss, sub)) {
-                logger.warn("Step 3.1: JWT 파라미터 검증 실패");
+                logger.warn("Step 4.1: JWT 파라미터 검증 실패");
                 ResponseService.sendError(response, 400, "exp, iss, sub 파라미터는 필수입니다");
                 return;
             }
 
             // JWT 생성
-            logger.info("Step 4: JWT 생성 시작");
+            logger.info("Step 5: JWT 생성 시작");
             String jwt = JWTService.generateJWT(exp, iss, sub, privateKey);
-            logger.info("Step 4.1: JWT 생성 성공");
+            logger.info("Step 5.1: JWT 생성 성공");
             ResponseService.sendJWTResponse(response, jwt, publicKeyPem);
             logger.info("=== JWT 생성 요청 END (SUCCESS) ===");
 

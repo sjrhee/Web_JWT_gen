@@ -77,6 +77,17 @@ public class SetupServlet extends HttpServlet {
                     ex.printStackTrace();
                 }
             }
+        } else if ("currentPassword".equals(action)) {
+            // 설정 파일에서 현재 비밀번호 읽기
+            try {
+                getCurrentPassword(request, response);
+            } catch (Exception e) {
+                try {
+                    sendError(response, 500, "비밀번호 조회 실패: " + e.getMessage());
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
         } else {
             // 초기화 상태 확인
             response.setContentType("application/json; charset=UTF-8");
@@ -421,6 +432,68 @@ public class SetupServlet extends HttpServlet {
         error.addProperty("success", false);
         error.addProperty("error", message);
         response.getWriter().write(error.toString());
+    }
+
+    /**
+     * 설정 파일에서 현재 비밀번호 읽기
+     * admin.js에서 백업 시 사용할 현재 비밀번호를 조회합니다
+     */
+    public void getCurrentPassword(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        response.setContentType("application/json; charset=UTF-8");
+
+        String webappPath = getServletContext().getRealPath("/");
+        String configPath = webappPath + "jwt-config.properties";
+        
+        logger.info("=== getCurrentPassword START ===");
+        logger.info("ConfigPath: {}", configPath);
+        
+        try {
+            String password = readPasswordFromConfig(configPath);
+            
+            if (password == null) {
+                sendError(response, 404, "설정 파일에서 비밀번호를 찾을 수 없습니다");
+                return;
+            }
+            
+            logger.info("Password read successfully from config file, length: {}", password.length());
+            
+            JsonObject result = new JsonObject();
+            result.addProperty("success", true);
+            result.addProperty("password", password);
+            
+            response.getWriter().write(result.toString());
+        } catch (Exception e) {
+            logger.error("Error reading password from config", e);
+            sendError(response, 500, "비밀번호 조회 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 설정 파일에서 비밀번호 읽기
+     */
+    private String readPasswordFromConfig(String configPath) throws Exception {
+        try {
+            if (!Files.exists(Paths.get(configPath))) {
+                logger.warn("Config file not found: {}", configPath);
+                return null;
+            }
+            
+            List<String> lines = Files.readAllLines(Paths.get(configPath));
+            
+            for (String line : lines) {
+                if (line.startsWith("keystore.password=")) {
+                    String password = line.substring("keystore.password=".length());
+                    logger.debug("Password read from config file");
+                    return password;
+                }
+            }
+            
+            logger.warn("keystore.password property not found in config file");
+            return null;
+        } catch (Exception e) {
+            logger.error("Error reading config file", e);
+            throw e;
+        }
     }
 
     /**

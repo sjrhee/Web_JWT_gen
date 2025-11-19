@@ -150,21 +150,21 @@ async function changePassword() {
         console.log('[changePassword] 응답 데이터:', data);
 
         if (data.success) {
-            showPasswordChangeMessage('✅ 비밀번호가 변경되었습니다', 'success');
+            const newPwd = document.getElementById('newPassword').value;
+            showPasswordChangeMessage(`✅ 비밀번호가 변경되었습니다\n새 비밀번호: ${newPwd}`, 'success');
             
             // adminToken을 새로운 비밀번호로 업데이트
-            const newPassword = document.getElementById('newPassword').value;
-            adminToken = btoa(newPassword + ':' + new Date().getTime());
+            adminToken = btoa(newPwd + ':' + new Date().getTime());
             sessionStorage.setItem('adminToken', adminToken);
             console.log('[changePassword] adminToken 업데이트됨');
             
-            // 3초 후 입력 필드 초기화
+            // 5초 후 입력 필드 초기화 (사용자가 새 비밀번호를 기록할 시간 제공)
             setTimeout(() => {
                 document.getElementById('currentPassword').value = '';
                 document.getElementById('newPassword').value = '';
                 document.getElementById('confirmNewPassword').value = '';
                 messageEl.style.display = 'none';
-            }, 3000);
+            }, 5000);
         } else {
             showPasswordChangeMessage(data.error || '비밀번호 변경 실패', 'error');
         }
@@ -310,9 +310,20 @@ function showMessage(message, type) {
 
 // Keystore 백업 다운로드
 async function backupKeystore() {
-    const password = atob(adminToken).split(':')[0];
-    
     try {
+        // 1. 서버에서 현재 비밀번호 조회
+        const pwResponse = await fetch('/webjwtgen/setup?action=currentPassword');
+        const pwData = await pwResponse.json();
+        
+        if (!pwData.success) {
+            showBackupMessage('비밀번호 조회 실패: ' + (pwData.error || '알 수 없는 오류'), 'error');
+            return;
+        }
+        
+        const password = pwData.password;
+        console.log('[backupKeystore] 서버에서 읽은 비밀번호 길이:', password.length);
+        
+        // 2. 조회한 비밀번호로 백업 시작
         const response = await fetch('/webjwtgen/setup?action=backup&password=' + encodeURIComponent(password));
         
         if (!response.ok) {
@@ -347,6 +358,7 @@ async function backupKeystore() {
             showBackupMessage(data.error || '백업 실패', 'error');
         }
     } catch (error) {
+        console.error('[backupKeystore] 오류:', error);
         showBackupMessage('오류: ' + error.message, 'error');
     }
 }

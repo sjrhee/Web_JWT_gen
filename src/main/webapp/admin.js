@@ -56,17 +56,27 @@ async function backupKeystore() {
             
             console.log('[backupKeystore] Blob 생성 완료, 크기:', blob.size);
             
+            // 날짜를 포함한 파일명 생성 (YYYY-MM-DD-HHmmss)
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const filename = `keystore-${year}-${month}-${day}-${hours}${minutes}${seconds}.jks`;
+            
             // 다운로드
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'keystore.jks';
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
             
-            showBackupMessage('✅ Keystore 백업이 다운로드되었습니다', 'success');
+            showBackupMessage('✅ Keystore 백업이 다운로드되었습니다 (' + filename + ')', 'success');
         } else {
             console.log('[backupKeystore] 서버 오류:', data.error);
             showBackupMessage('❌ ' + (data.error || '백업 실패'), 'error');

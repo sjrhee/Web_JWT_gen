@@ -30,7 +30,8 @@ EC256 (ECDSA with SHA-256) 기반의 안전한 JWT 토큰 생성 및 관리 시�
 
 ### 1. 초기 설정 페이지 접속
 ```
-http://localhost:8080/webjwtgen/setup.jsp
+HTTP:  http://localhost:8080/webjwtgen/setup.jsp
+HTTPS: https://localhost:8443/webjwtgen/setup.jsp
 ```
 
 ### 2. 초기 설정 수행
@@ -40,7 +41,8 @@ http://localhost:8080/webjwtgen/setup.jsp
 
 ### 3. JWT 생성
 ```
-http://localhost:8080/webjwtgen/index.jsp
+HTTP:  http://localhost:8080/webjwtgen/index.jsp
+HTTPS: https://localhost:8443/webjwtgen/index.jsp
 ```
 
 **필드 입력:**
@@ -50,7 +52,8 @@ http://localhost:8080/webjwtgen/index.jsp
 
 ### 4. 관리 기능 (선택사항)
 ```
-http://localhost:8080/webjwtgen/admin.jsp
+HTTP:  http://localhost:8080/webjwtgen/admin.jsp
+HTTPS: https://localhost:8443/webjwtgen/admin.jsp
 ```
 
 **기능:**
@@ -313,7 +316,24 @@ admin.jsp 접근
 ## 📊 지원 포트
 
 - **HTTP**: 8080 (모든 기능)
-- **HTTPS**: 8443 (모든 기능, 설정 필요)
+- **HTTPS**: 8443 (모든 기능, 자체 서명 SSL 인증서 사용)
+
+### HTTPS 인증서 정보
+- **형식**: JKS (Java KeyStore)
+- **유효기간**: 1년 (2025-11-19 ~ 2026-11-19)
+- **위치**: `/var/lib/tomcat9/ssl/keystore.jks`
+- **별칭**: tomcat
+- **알고리즘**: RSA 2048-bit
+
+### 자체 서명 인증서 관련 주의사항
+- 브라우저에서 보안 경고가 표시될 수 있습니다
+- curl 등에서는 `-k` 옵션으로 인증서 검증을 무시할 수 있습니다
+- 프로덕션 환경에서는 공인 인증서 사용을 권장합니다
+
+```bash
+# HTTPS 테스트
+curl -k https://localhost:8443/webjwtgen/
+```
 
 ## ⚠️ 주의사항
 

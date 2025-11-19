@@ -92,21 +92,21 @@
                                 <div class="item-number">2️⃣</div>
                                 <div class="item-content">
                                     <strong>Keystore 백업 검증</strong>
-                                    <p>Keystore를 백업할 때 이 비밀번호를 확인하여 권한 있는 사용자만 백업을 받을 수 있도록 보호합니다.</p>
+                                    <p>Keystore를 백업할 때 현재 비밀번호를 확인하여 권한 있는 사용자만 백업을 받을 수 있도록 보호합니다.</p>
                                 </div>
                             </div>
                             <div class="info-item">
                                 <div class="item-number">3️⃣</div>
                                 <div class="item-content">
                                     <strong>Keystore 복원</strong>
-                                    <p>백업 시 사용한 비밀번호로 검증하여 올바른 백업 파일을 복원합니다. 다른 시스템의 백업이라면 해당 시스템의 비밀번호가 필요합니다.</p>
+                                    <p>백업 시 사용한 비밀번호로 검증하여 백업 파일을 복원합니다. 이 비밀번호가 시스템에 유지됩니다.</p>
                                 </div>
                             </div>
                             <div class="info-item">
                                 <div class="item-number">4️⃣</div>
                                 <div class="item-content">
                                     <strong>관리 기능 인증</strong>
-                                    <p>비밀번호 변경, Keystore 백업 등 모든 관리 기능을 수행할 때 이 비밀번호로 인증하여 보안을 보장합니다.</p>
+                                    <p>Keystore의 비밀번호는 백업 등 모든 관리 기능을 수행할 때 사용되며 보안을 보장합니다.</p>
                                 </div>
                             </div>
                         </div>

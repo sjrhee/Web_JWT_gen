@@ -97,7 +97,18 @@ public class SetupServlet extends HttpServlet {
         response.setContentType("application/json; charset=UTF-8");
         String action = request.getParameter("action");
 
-        if ("restore".equals(action)) {
+        if ("backup".equals(action)) {
+            // Keystore 백업
+            try {
+                backupKeystore(request, response);
+            } catch (Exception e) {
+                try {
+                    sendError(response, 500, "백업 실패: " + e.getMessage());
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        } else if ("restore".equals(action)) {
             // Keystore 복원
             try {
                 restoreKeystore(request, response);
@@ -333,7 +344,7 @@ public class SetupServlet extends HttpServlet {
      * Keystore 비밀번호 검증 및 인증 토큰 발급
      */
 
-/**
+    /**
      * Keystore 백업 다운로드
      */
     public void backupKeystore(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -351,6 +362,20 @@ public class SetupServlet extends HttpServlet {
         if (password == null || password.isEmpty()) {
             logger.warn("비밀번호 미제공");
             sendError(response, 400, "비밀번호를 제공해주세요");
+            return;
+        }
+        
+        // Keystore 비밀번호 검증
+        try {
+            String keystorePath = webappPath + "keystore.jks";
+            if (!KeystoreService.verifyKeystorePassword(keystorePath, password)) {
+                logger.warn("비밀번호 검증 실패");
+                sendError(response, 401, "비밀번호가 일치하지 않습니다");
+                return;
+            }
+        } catch (Exception e) {
+            logger.error("비밀번호 검증 중 오류: {}", e.getMessage());
+            sendError(response, 401, "비밀번호 검증 실패: " + e.getMessage());
             return;
         }
         
@@ -377,12 +402,12 @@ public class SetupServlet extends HttpServlet {
             result.addProperty("filename", "keystore-" + new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()) + ".jks");
             
             response.getWriter().write(result.toString());
+            logger.info("=== backupKeystore END (SUCCESS) ===");
         } catch (Exception e) {
+            logger.error("백업 실패: {}", e.getMessage());
             sendError(response, 500, "백업 실패: " + e.getMessage());
         }
-    }
-
-    /**
+    }    /**
      * Keystore 복원 업로드
      */
     public void restoreKeystore(HttpServletRequest request, HttpServletResponse response) throws Exception {

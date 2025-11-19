@@ -21,30 +21,16 @@ async function backupKeystore() {
             return;
         }
         
-        // 2. 서버에 토큰 요청
-        console.log('[backupKeystore] 서버에 토큰 요청');
-        const loginResponse = await fetch('/webjwtgen/setup', {
+        // 2. 백업 요청 (비밀번호 직접 전송)
+        console.log('[backupKeystore] 백업 요청 시작');
+        const response = await fetch('/webjwtgen/setup?action=backup', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
-            body: 'action=login&password=' + encodeURIComponent(password)
+            body: 'password=' + encodeURIComponent(password)
         });
         
-        const loginData = await loginResponse.json();
-        
-        if (!loginData.success) {
-            console.log('[backupKeystore] 토큰 요청 실패:', loginData.error);
-            showBackupMessage('❌ ' + (loginData.error || '비밀번호가 일치하지 않습니다'), 'error');
-            return;
-        }
-        
-        const token = loginData.token;
-        console.log('[backupKeystore] 토큰 발급 완료');
-        
-        // 3. 토큰으로 백업 시작
-        console.log('[backupKeystore] 백업 요청 시작');
-        const response = await fetch('/webjwtgen/setup?action=backup&token=' + encodeURIComponent(token));
         console.log('[backupKeystore] 응답 상태:', response.status);
         
         if (!response.ok) {

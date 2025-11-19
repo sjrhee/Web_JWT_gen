@@ -98,8 +98,8 @@
                             <div class="info-item">
                                 <div class="item-number">3️⃣</div>
                                 <div class="item-content">
-                                    <strong>Keystore 복원 검증</strong>
-                                    <p>백업 파일을 복원할 때 백업 시점의 비밀번호로 검증합니다. 올바른 비밀번호 없이는 복원할 수 없습니다.</p>
+                                    <strong>Keystore 복원</strong>
+                                    <p>백업 시 사용한 비밀번호로 검증하여 올바른 백업 파일을 복원합니다. 다른 시스템의 백업이라면 해당 시스템의 비밀번호가 필요합니다.</p>
                                 </div>
                             </div>
                             <div class="info-item">

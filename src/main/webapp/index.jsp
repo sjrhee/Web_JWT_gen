@@ -369,10 +369,10 @@
     </div>
 
     <script>
-        // 현재 날짜/시간을 기본값으로 설정 (1시간 뒤)
+        // 현재 날짜/시간을 기본값으로 설정 (10년 뒤)
         document.addEventListener('DOMContentLoaded', function() {
             const now = new Date();
-            const future = new Date(now.getTime() + 3600 * 1000); // 1시간 뒤
+            const future = new Date(now.getTime() + 10 * 365.25 * 24 * 3600 * 1000); // 10년 뒤
 
             const year = future.getFullYear();
             const month = String(future.getMonth() + 1).padStart(2, '0');

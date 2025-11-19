@@ -11,6 +11,9 @@ import javax.servlet.http.*;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.security.jwt.service.PasswordService;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bouncycastle.asn1.*;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -27,6 +30,7 @@ public class SetupServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
     private static final Gson gson = new Gson();
     private static final String SETUP_FLAG_FILE = "setup-completed.flag";
+    private static final Logger logger = LogManager.getLogger(SetupServlet.class);
 
     @Override
     public void init() throws ServletException {
@@ -36,9 +40,30 @@ public class SetupServlet extends HttpServlet {
         }
     }
 
+    /**
+     * CORS 헤더 설정
+     */
+    private void setCorsHeaders(HttpServletResponse response) {
+        response.setHeader("Access-Control-Allow-Origin", "*");
+        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        response.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        response.setHeader("Access-Control-Max-Age", "3600");
+    }
+
+    /**
+     * OPTIONS 요청 처리 (CORS preflight)
+     */
+    @Override
+    protected void doOptions(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        setCorsHeaders(response);
+        response.setStatus(HttpServletResponse.SC_OK);
+    }
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        setCorsHeaders(response);
         String action = request.getParameter("action");
 
         if ("backup".equals(action)) {
@@ -67,6 +92,7 @@ public class SetupServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        setCorsHeaders(response);
         String action = request.getParameter("action");
 
         if ("restore".equals(action)) {
@@ -131,17 +157,97 @@ public class SetupServlet extends HttpServlet {
     }
 
     /**
+     * PUT: 비밀번호 변경
+     */
+    @Override
+    protected void doPut(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        setCorsHeaders(response);
+        logger.info("=== doPut START ===");
+        response.setContentType("application/json; charset=UTF-8");
+
+        try {
+            // PUT 요청의 body를 파싱하기 위해 HttpServletRequest를 래핑
+            PutRequestWrapper wrappedRequest = new PutRequestWrapper(request);
+            logger.debug("Request method: {}", wrappedRequest.getMethod());
+            logger.debug("Request content type: {}", wrappedRequest.getContentType());
+            
+            handlePasswordChange(wrappedRequest, response);
+            logger.info("=== doPut END (SUCCESS) ===");
+        } catch (Exception e) {
+            logger.error("Exception in doPut", e);
+            sendError(response, 500, "비밀번호 변경 실패: " + e.getMessage());
+            logger.info("=== doPut END (ERROR) ===");
+        }
+    }
+
+    /**
+     * PUT 요청 래퍼 - 요청 body를 파라미터로 파싱
+     */
+    private static class PutRequestWrapper extends javax.servlet.http.HttpServletRequestWrapper {
+        private java.util.Map<String, String[]> parameterMap;
+
+        public PutRequestWrapper(HttpServletRequest request) throws IOException {
+            super(request);
+            parameterMap = new java.util.HashMap<>();
+            
+            // 요청 body 읽기
+            StringBuilder sb = new StringBuilder();
+            try (java.io.BufferedReader reader = request.getReader()) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+            }
+            
+            String body = sb.toString();
+            LogManager.getLogger().debug("Request body: {}", body);
+            
+            // URL 디코딩된 파라미터 파싱
+            if (body != null && !body.isEmpty()) {
+                String[] pairs = body.split("&");
+                for (String pair : pairs) {
+                    int idx = pair.indexOf('=');
+                    if (idx > 0) {
+                        String key = java.net.URLDecoder.decode(pair.substring(0, idx), "UTF-8");
+                        String value = java.net.URLDecoder.decode(pair.substring(idx + 1), "UTF-8");
+                        parameterMap.put(key, new String[]{value});
+                        LogManager.getLogger().debug("Parsed parameter: {} = {}", key, value);
+                    }
+                }
+            }
+        }
+
+        @Override
+        public String getParameter(String name) {
+            String[] values = parameterMap.get(name);
+            if (values != null && values.length > 0) {
+                return values[0];
+            }
+            return null;
+        }
+
+        @Override
+        public java.util.Map<String, String[]> getParameterMap() {
+            return parameterMap;
+        }
+    }
+
+    /**
      * DELETE: 강제 초기화 (관리자용)
      */
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        setCorsHeaders(response);
         response.setContentType("application/json; charset=UTF-8");
 
         try {
+            String webappPath = getServletContext().getRealPath("/");
+            String configPath = webappPath + "jwt-config.properties";
             // 비밀번호 확인
             String password = request.getParameter("password");
-            if (password == null || !verifyPassword(password)) {
+            if (password == null || !PasswordService.verifyPassword(password, configPath)) {
                 sendError(response, 401, "비밀번호가 일치하지 않습니다");
                 return;
             }
@@ -154,7 +260,6 @@ public class SetupServlet extends HttpServlet {
             }
 
             // 기존 파일 삭제
-            String webappPath = getServletContext().getRealPath("/");
             deleteSetupFiles(webappPath);
 
             // JwtServlet 서블릿 컨텍스트에 keysLoaded 플래그 리셋 요청
@@ -175,22 +280,6 @@ public class SetupServlet extends HttpServlet {
     /**
      * 비밀번호 검증
      */
-    private boolean verifyPassword(String inputPassword) throws Exception {
-        String webappPath = getServletContext().getRealPath("/");
-        String configFile = webappPath + "jwt-config.properties";
-        
-        if (!Files.exists(Paths.get(configFile))) {
-            return false;
-        }
-
-        try (FileInputStream fis = new FileInputStream(configFile)) {
-            Properties props = new Properties();
-            props.load(fis);
-            String storedPassword = props.getProperty("keystore.password");
-            return storedPassword != null && storedPassword.equals(inputPassword);
-        }
-    }
-
     /**
      * 초기 설정 파일 삭제
      */
@@ -265,19 +354,42 @@ public class SetupServlet extends HttpServlet {
      * 주: Java Keystore는 비밀 저장을 위해 SecretKeyEntry를 사용
      */
     private void storeApiKey(String keystorePath, String keystorePassword, String apiKey) throws Exception {
-        // keytool을 사용하거나 자동으로 저장 (별도 파일로도 가능)
-        // 여기서는 설정 파일로 저장하는 방식 선택
+        // 설정 파일로 저장
         String configFile = new File(keystorePath).getParent() + File.separator + "jwt-config.properties";
         
-        Properties props = new Properties();
-        props.setProperty("api.key", apiKey);
-        props.setProperty("keystore.path", keystorePath);
-        props.setProperty("keystore.password", keystorePassword);  // 비밀번호 저장
-        props.setProperty("keystore.alias", "ec256-jwt");
+        StringBuilder sb = new StringBuilder();
+        sb.append("# JWT Configuration\n");
+        sb.append("keystore.path=").append(keystorePath).append("\n");
+        sb.append("api.key=").append(apiKey).append("\n");
+        sb.append("keystore.password=").append(keystorePassword).append("\n");
+        sb.append("keystore.alias=ec256-jwt\n");
         
-        try (FileOutputStream fos = new FileOutputStream(configFile)) {
-            props.store(fos, "JWT Configuration");
+        logger.info("=== storeApiKey START ===");
+        logger.info("Config file path: {}", configFile);
+        logger.info("Keystore password: {}", keystorePassword);
+        logger.info("API key: {}", apiKey);
+        logger.info("Config file content:\n{}", sb.toString());
+        
+        try {
+            Files.write(Paths.get(configFile), sb.toString().getBytes());
+            logger.info("File written successfully to: {}", configFile);
+            
+            // 파일 검증
+            String verifyContent = new String(Files.readAllBytes(Paths.get(configFile)));
+            logger.info("Verification - Config file content after write:\n{}", verifyContent);
+            
+            if (verifyContent.contains("keystore.password=" + keystorePassword)) {
+                logger.info("✓ Password update verified in file");
+            } else {
+                logger.warn("✗ Password update NOT found in file after write!");
+            }
+        } catch (Exception e) {
+            logger.error("Error writing to config file: {}", configFile, e);
+            logger.error("Exception details: {}", e.getClass().getName());
+            throw e;
         }
+        
+        logger.info("=== storeApiKey END ===");
     }
 
     /**
@@ -313,13 +425,23 @@ public class SetupServlet extends HttpServlet {
     public void backupKeystore(HttpServletRequest request, HttpServletResponse response) throws Exception {
         response.setContentType("application/json; charset=UTF-8");
 
+        String webappPath = getServletContext().getRealPath("/");
+        String configPath = webappPath + "jwt-config.properties";
         String password = request.getParameter("password");
-        if (password == null || !verifyPassword(password)) {
+        
+        logger.info("=== backupKeystore START ===");
+        logger.info("WebappPath: {}", webappPath);
+        logger.info("ConfigPath: {}", configPath);
+        logger.info("Received password length: {}", password != null ? password.length() : "null");
+        
+        if (password == null || !PasswordService.verifyPassword(password, configPath)) {
+            logger.warn("Password verification FAILED for backup");
             sendError(response, 401, "비밀번호가 일치하지 않습니다");
             return;
         }
+        
+        logger.info("Password verification SUCCESS for backup");
 
-        String webappPath = getServletContext().getRealPath("/");
         String keystorePath = webappPath + "keystore.jks";
 
         if (!Files.exists(Paths.get(keystorePath))) {
@@ -352,8 +474,10 @@ public class SetupServlet extends HttpServlet {
     public void restoreKeystore(HttpServletRequest request, HttpServletResponse response) throws Exception {
         response.setContentType("application/json; charset=UTF-8");
 
+        String webappPath = getServletContext().getRealPath("/");
+        String configPath = webappPath + "jwt-config.properties";
         String password = request.getParameter("password");
-        if (password == null || !verifyPassword(password)) {
+        if (password == null || !PasswordService.verifyPassword(password, configPath)) {
             sendError(response, 401, "비밀번호가 일치하지 않습니다");
             return;
         }
@@ -380,7 +504,6 @@ public class SetupServlet extends HttpServlet {
             // Base64 디코딩
             byte[] keystoreData = Base64.decode(base64Data);
 
-            String webappPath = getServletContext().getRealPath("/");
             String keystorePath = webappPath + "keystore.jks";
 
             // 기존 백업 생성
@@ -405,6 +528,127 @@ public class SetupServlet extends HttpServlet {
 
         } catch (Exception e) {
             sendError(response, 500, "복원 실패: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 비밀번호 변경 처리
+     */
+    private void handlePasswordChange(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        logger.info("=== handlePasswordChange START ===");
+        
+        String webappPath = getServletContext().getRealPath("/");
+        String configPath = webappPath + "jwt-config.properties";
+        
+        logger.debug("WebappPath: {}", webappPath);
+        logger.debug("ConfigPath: {}", configPath);
+        
+        // 현재 비밀번호 검증
+        String currentPassword = request.getParameter("currentPassword");
+        logger.debug("Received currentPassword parameter, length: {}", currentPassword != null ? currentPassword.length() : "null");
+        
+        if (currentPassword == null) {
+            logger.warn("currentPassword is null");
+            sendError(response, 400, "현재 비밀번호를 입력해주세요");
+            return;
+        }
+        
+        logger.debug("Calling PasswordService.verifyPassword()");
+        boolean passwordMatch = PasswordService.verifyPassword(currentPassword, configPath);
+        logger.info("Password verification result: {}", passwordMatch);
+        
+        if (!passwordMatch) {
+            logger.warn("Password verification FAILED");
+            sendError(response, 401, "현재 비밀번호가 일치하지 않습니다");
+            logger.debug("=== handlePasswordChange END (password mismatch) ===");
+            return;
+        }
+        
+        logger.info("Password verification SUCCESS");
+
+        // 새 비밀번호 입력
+        String newPassword = request.getParameter("newPassword");
+        String confirmNewPassword = request.getParameter("confirmNewPassword");
+        
+        logger.debug("Received newPassword, length: {}", newPassword != null ? newPassword.length() : "null");
+        logger.debug("Received confirmNewPassword, length: {}", confirmNewPassword != null ? confirmNewPassword.length() : "null");
+
+        // 새 비밀번호 검증 (8자 이상)
+        if (newPassword == null || newPassword.length() < 8) {
+            logger.warn("New password validation failed: length < 8");
+            sendError(response, 400, "새 비밀번호는 8자 이상이어야 합니다");
+            logger.debug("=== handlePasswordChange END (validation failed) ===");
+            return;
+        }
+
+        // 새 비밀번호 일치 확인
+        if (!newPassword.equals(confirmNewPassword)) {
+            logger.warn("New password confirmation mismatch");
+            sendError(response, 400, "새 비밀번호가 일치하지 않습니다");
+            logger.debug("=== handlePasswordChange END (confirmation mismatch) ===");
+            return;
+        }
+
+        String keystorePath = webappPath + "keystore.jks";
+        logger.debug("KeystorePath: {}", keystorePath);
+
+        try {
+            // Keystore 비밀번호 변경
+            logger.info("Starting keystore password change");
+            changeKeystorePassword(keystorePath, currentPassword, newPassword);
+            logger.info("Keystore password changed successfully");
+
+            // 설정 파일의 비밀번호 업데이트
+            logger.info("Updating config file with new password");
+            storeApiKey(keystorePath, newPassword, newPassword);
+            logger.info("Config file updated successfully");
+
+            // JWT 키 캐시 초기화
+            getServletContext().setAttribute("jwt_keys_loaded", false);
+            logger.info("JWT keys cache cleared");
+
+            JsonObject result = new JsonObject();
+            result.addProperty("success", true);
+            result.addProperty("message", "비밀번호가 성공적으로 변경되었습니다");
+            response.getWriter().write(result.toString());
+            logger.info("=== handlePasswordChange END (SUCCESS) ===");
+        } catch (Exception e) {
+            logger.error("Exception during password change", e);
+            throw e;
+        }
+    }
+
+    /**
+     * Keystore의 비밀번호 변경
+     */
+    private void changeKeystorePassword(String keystorePath, String oldPassword, String newPassword) throws Exception {
+        KeyStore oldKeystore = KeyStore.getInstance("JKS");
+        try (FileInputStream fis = new FileInputStream(keystorePath)) {
+            oldKeystore.load(fis, oldPassword.toCharArray());
+        }
+
+        KeyStore newKeystore = KeyStore.getInstance("JKS");
+        newKeystore.load(null, newPassword.toCharArray());
+
+        // 기존 Keystore의 모든 항목을 새 Keystore에 복사
+        Enumeration<String> aliases = oldKeystore.aliases();
+        while (aliases.hasMoreElements()) {
+            String alias = aliases.nextElement();
+            if (oldKeystore.isKeyEntry(alias)) {
+                // Private Key 및 Certificate Chain 복사
+                PrivateKey privateKey = (PrivateKey) oldKeystore.getKey(alias, oldPassword.toCharArray());
+                java.security.cert.Certificate[] certChain = oldKeystore.getCertificateChain(alias);
+                newKeystore.setKeyEntry(alias, privateKey, newPassword.toCharArray(), certChain);
+            } else {
+                // Certificate만 복사
+                java.security.cert.Certificate cert = oldKeystore.getCertificate(alias);
+                newKeystore.setCertificateEntry(alias, cert);
+            }
+        }
+
+        // 새 Keystore 저장
+        try (FileOutputStream fos = new FileOutputStream(keystorePath)) {
+            newKeystore.store(fos, newPassword.toCharArray());
         }
     }
 }

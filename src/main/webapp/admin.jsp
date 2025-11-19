@@ -5,392 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JWT 생성기 - 관리자 페이지</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .header h1 {
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-
-        .content {
-            padding: 30px;
-        }
-
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
-            border-radius: 5px;
-        }
-
-        .section h2 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 20px;
-        }
-
-        .warning-box {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-
-        .warning-title {
-            color: #856404;
-            font-weight: 600;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-        }
-
-        .warning-icon {
-            font-size: 20px;
-            margin-right: 10px;
-        }
-
-        .warning-text {
-            color: #856404;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .danger-warning {
-            background: #f8d7da;
-            border: 2px solid #dc3545;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-
-        .danger-title {
-            color: #721c24;
-            font-weight: 600;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-        }
-
-        .danger-icon {
-            font-size: 22px;
-            margin-right: 10px;
-        }
-
-        .danger-text {
-            color: #721c24;
-            font-size: 14px;
-            line-height: 1.6;
-            margin-bottom: 10px;
-        }
-
-        .info-list {
-            background: white;
-            border-radius: 5px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-
-        .info-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .info-item:last-child {
-            border-bottom: none;
-        }
-
-        .info-label {
-            font-weight: 600;
-            color: #666;
-        }
-
-        .info-value {
-            color: #333;
-            word-break: break-all;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        button {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 5px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-reset {
-            background: #dc3545;
-            color: white;
-        }
-
-        .btn-reset:hover {
-            background: #c82333;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
-        }
-
-        .btn-backup {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-backup:hover {
-            background: #218838;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
-        }
-
-        .btn-restore {
-            background: #007bff;
-            color: white;
-        }
-
-        .btn-restore:hover {
-            background: #0056b3;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 86, 179, 0.3);
-        }
-
-        .btn-cancel {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-cancel:hover {
-            background: #5a6268;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-
-        .modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-
-        .modal-header {
-            font-size: 24px;
-            font-weight: 600;
-            color: #dc3545;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-        }
-
-        .modal-icon {
-            font-size: 32px;
-            margin-right: 15px;
-        }
-
-        .modal-body {
-            color: #666;
-            line-height: 1.8;
-            margin-bottom: 20px;
-        }
-
-        .risk-list {
-            background: #f8d7da;
-            border-left: 4px solid #dc3545;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 3px;
-        }
-
-        .risk-list li {
-            color: #721c24;
-            margin-bottom: 8px;
-            margin-left: 20px;
-        }
-
-        .risk-list li:last-child {
-            margin-bottom: 0;
-        }
-
-        .confirm-section {
-            background: #f0f0f0;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-
-        .confirm-checkbox {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .confirm-checkbox input {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-            cursor: pointer;
-        }
-
-        .confirm-checkbox label {
-            cursor: pointer;
-            color: #333;
-            font-size: 14px;
-        }
-
-        .modal-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn-confirm {
-            flex: 1;
-            background: #dc3545;
-            color: white;
-            padding: 12px;
-            border: none;
-            border-radius: 5px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            disabled: opacity 0.5;
-        }
-
-        .btn-confirm:hover:not(:disabled) {
-            background: #c82333;
-            transform: translateY(-2px);
-        }
-
-        .btn-confirm:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-close-modal {
-            flex: 1;
-            background: #6c757d;
-            color: white;
-            padding: 12px;
-            border: none;
-            border-radius: 5px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-close-modal:hover {
-            background: #5a6268;
-        }
-
-        .message {
-            margin-bottom: 20px;
-            padding: 12px;
-            border-radius: 5px;
-            font-size: 14px;
-            display: none;
-        }
-
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-            display: block;
-        }
-
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-            display: block;
-        }
-
-        .info-status {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 3px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .status-completed {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-pending {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-bottom: 20px;
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <link rel="stylesheet" href="admin.css">
 </head>
 <body>
     <div class="container">
@@ -455,6 +70,43 @@
                 </div>
             </div>
 
+            <!-- 비밀번호 변경 섹션 -->
+            <div class="section">
+                <h2>🔐 비밀번호 변경</h2>
+                
+                <div class="warning-box">
+                    <div class="warning-title">
+                        <span class="warning-icon">ℹ️</span>
+                        비밀번호 변경 안내
+                    </div>
+                    <div class="warning-text">
+                        비밀번호는 Keystore 보호 및 API Key로 사용됩니다.<br>
+                        변경 시 모든 시스템에서 새 비밀번호를 사용해야 합니다.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="currentPassword">현재 비밀번호</label>
+                    <input type="password" id="currentPassword" placeholder="현재 비밀번호 입력" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="newPassword">새 비밀번호</label>
+                    <input type="password" id="newPassword" placeholder="새 비밀번호 (8자 이상)" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmNewPassword">새 비밀번호 확인</label>
+                    <input type="password" id="confirmNewPassword" placeholder="새 비밀번호 재입력" required>
+                </div>
+
+                <div id="passwordChangeMessage" class="message" style="display: none;"></div>
+
+                <div class="button-group">
+                    <button class="btn-primary" onclick="changePassword()">🔄 비밀번호 변경</button>
+                </div>
+            </div>
+
             <!-- 강제 초기화 섹션 -->
             <div class="section">
                 <h2>🔄 강제 초기화</h2>
@@ -490,7 +142,7 @@
                 </div>
 
                 <div class="button-group">
-                    <button class="btn-reset" onclick="openResetModal()">🔴 강제 초기화</button>
+                    <button class="btn-reset" onclick="window.location.href='setup.jsp'">🔴 강제 초기화</button>
                 </div>
             </div>
 
@@ -554,6 +206,37 @@
                         <span class="info-value">/webjwtgen/generate</span>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 비밀번호 재입력 모달 -->
+    <div class="modal" id="passwordResetModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-icon">🔐</span>
+                비밀번호 확인
+            </div>
+
+            <div class="modal-body">
+                <strong>강제 초기화를 위해 비밀번호를 다시 입력해주세요</strong><br><br>
+                보안을 위해 현재 저장된 비밀번호가 일치하지 않습니다.
+                정확한 비밀번호를 입력하면 강제 초기화를 진행할 수 있습니다.
+            </div>
+
+            <div class="confirm-section">
+                <input type="password" id="resetPassword" placeholder="비밀번호 입력" 
+                       style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; margin-bottom: 10px;">
+                <div id="resetPasswordError" style="color: #dc3545; font-size: 12px; display: none; margin-bottom: 10px;"></div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-confirm" onclick="verifyPasswordForReset()">
+                    ✓ 확인
+                </button>
+                <button class="btn-close-modal" onclick="closePasswordResetModal()">
+                    취소
+                </button>
             </div>
         </div>
     </div>
@@ -723,8 +406,117 @@
             document.getElementById('serverTime').textContent = now.toLocaleString('ko-KR');
         }
 
+        // 비밀번호 변경
+        async function changePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+            const messageEl = document.getElementById('passwordChangeMessage');
+
+            if (!currentPassword || !newPassword || !confirmNewPassword) {
+                showPasswordChangeMessage('모든 필드를 입력해주세요', 'error');
+                return;
+            }
+
+            if (newPassword.length < 8) {
+                showPasswordChangeMessage('새 비밀번호는 8자 이상이어야 합니다', 'error');
+                return;
+            }
+
+            if (newPassword !== confirmNewPassword) {
+                showPasswordChangeMessage('새 비밀번호가 일치하지 않습니다', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/webjwtgen/setup', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `currentPassword=${encodeURIComponent(currentPassword)}&newPassword=${encodeURIComponent(newPassword)}&confirmNewPassword=${encodeURIComponent(confirmNewPassword)}`
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showPasswordChangeMessage('✅ 비밀번호가 변경되었습니다', 'success');
+                    // 3초 후 입력 필드 초기화
+                    setTimeout(() => {
+                        document.getElementById('currentPassword').value = '';
+                        document.getElementById('newPassword').value = '';
+                        document.getElementById('confirmNewPassword').value = '';
+                        messageEl.style.display = 'none';
+                    }, 3000);
+                } else {
+                    showPasswordChangeMessage(data.error || '비밀번호 변경 실패', 'error');
+                }
+            } catch (error) {
+                showPasswordChangeMessage('오류: ' + error.message, 'error');
+            }
+        }
+
+        function showPasswordChangeMessage(message, type) {
+            const messageEl = document.getElementById('passwordChangeMessage');
+            messageEl.textContent = message;
+            messageEl.className = 'message ' + type;
+            messageEl.style.display = 'block';
+        }
+
         // 강제 초기화 모달 열기
         function openResetModal() {
+            document.getElementById('passwordResetModal').classList.add('active');
+            document.getElementById('resetPassword').value = '';
+            document.getElementById('resetPassword').focus();
+            document.getElementById('resetPasswordError').style.display = 'none';
+        }
+
+        // 비밀번호 재입력 모달 닫기
+        function closePasswordResetModal() {
+            document.getElementById('passwordResetModal').classList.remove('active');
+            document.getElementById('resetPassword').value = '';
+        }
+
+        // 비밀번호 검증 후 강제 초기화 진행
+        function verifyPasswordForReset() {
+            const password = document.getElementById('resetPassword').value;
+            
+            if (!password) {
+                showResetPasswordError('비밀번호를 입력해주세요');
+                return;
+            }
+
+            // 서버에 비밀번호 검증
+            fetch('/webjwtgen/setup?password=' + encodeURIComponent(password) + '&confirm=AUTH_TEST', {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error && data.error.includes('일치하지')) {
+                    showResetPasswordError('비밀번호가 일치하지 않습니다');
+                } else {
+                    // 비밀번호 일치 - adminToken 업데이트
+                    adminToken = btoa(password + ':' + new Date().getTime());
+                    sessionStorage.setItem('adminToken', adminToken);
+                    
+                    // 비밀번호 모달 닫고 초기화 확인 모달 열기
+                    closePasswordResetModal();
+                    openConfirmResetModal();
+                }
+            })
+            .catch(error => {
+                showResetPasswordError('오류: ' + error.message);
+            });
+        }
+
+        // 비밀번호 에러 표시
+        function showResetPasswordError(message) {
+            document.getElementById('resetPasswordError').textContent = message;
+            document.getElementById('resetPasswordError').style.display = 'block';
+        }
+
+        // 강제 초기화 확인 모달 열기
+        function openConfirmResetModal() {
             document.getElementById('resetModal').classList.add('active');
             document.getElementById('confirmCheck1').checked = false;
             document.getElementById('confirmCheck2').checked = false;
@@ -766,7 +558,7 @@
                     showMessage(data.message, 'success');
                     setTimeout(() => {
                         sessionStorage.removeItem('adminToken');
-                        window.location.href = 'index.jsp';
+                        window.location.href = 'setup.jsp';
                     }, 2000);
                 } else {
                     showMessage(data.error || '초기화 실패', 'error');
@@ -896,11 +688,25 @@
         }
 
         // 모달 외부 클릭 시 닫기
+        document.getElementById('passwordResetModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePasswordResetModal();
+            }
+        });
+
         document.getElementById('resetModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeResetModal();
             }
         });
+
+        // Enter 키 처리 (비밀번호 재입력)
+        document.getElementById('resetPassword').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                verifyPasswordForReset();
+            }
+        });
     </script>
+    <script src="admin.js"></script>
 </body>
 </html>

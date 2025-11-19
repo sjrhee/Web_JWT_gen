@@ -17,7 +17,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JWT Generator - EC256</title>
+    <title>JWT Generator - ES256</title>
     <style>
         * {
             margin: 0;
@@ -270,7 +270,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
                     <h1>🔐 JWT Generator</h1>
-                    <p>EC256 (ECDSA with SHA-256) 기반 JWT 토큰 생성기</p>
+                    <p>ES256 (ECDSA with SHA-256) 기반 JWT 토큰 생성기</p>
                 </div>
                 <a href="admin.jsp" style="background: rgba(255,255,255,0.2); color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: 600; font-size: 14px; border: 2px solid white; transition: all 0.3s; display: inline-block;">⚙️ 관리자</a>
             </div>

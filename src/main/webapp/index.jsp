@@ -288,7 +288,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="expYear">만료 시간 (Expiration) *</label>
+                    <label for="expYear">만료 일시 (Expiration) *</label>
                     <div style="display: grid; grid-template-columns: 1.2fr 0.9fr 0.9fr 1fr; gap: 8px;">
                         <div>
                             <input type="number" id="expYear" name="expYear" placeholder="YYYY" min="2025" max="2099" required>

@@ -3,8 +3,6 @@ package com.security.jwt;
 import java.io.*;
 import java.nio.file.*;
 import java.security.*;
-import java.security.spec.*;
-import java.util.*;
 import javax.servlet.*;
 import javax.servlet.annotation.*;
 import javax.servlet.http.*;
@@ -12,20 +10,16 @@ import javax.servlet.http.*;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.security.jwt.service.KeystoreService;
-import com.security.jwt.service.PasswordService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.bouncycastle.asn1.*;
-import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.jce.spec.ECParameterSpec;
 import org.bouncycastle.util.encoders.Base64;
 
 /**
  * JWT 초기 설정 서블릿
  * Keystore 생성, EC256 키쌍 생성, API Key 설정
  */
-@WebServlet(name = "SetupServlet", urlPatterns = {"/setup"})
+@WebServlet(name = "SetupServlet", urlPatterns = { "/setup" })
 public class SetupServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
@@ -83,7 +77,7 @@ public class SetupServlet extends HttpServlet {
             response.setContentType("application/json; charset=UTF-8");
 
             boolean isSetupCompleted = isSetupCompleted();
-            
+
             JsonObject result = new JsonObject();
             result.addProperty("setupCompleted", isSetupCompleted);
             response.getWriter().write(result.toString());
@@ -147,47 +141,47 @@ public class SetupServlet extends HttpServlet {
             try {
                 // 이미 초기화되었는지 확인
                 if (isSetupCompleted()) {
-                sendError(response, 400, "이미 초기화되었습니다");
-                return;
+                    sendError(response, 400, "이미 초기화되었습니다");
+                    return;
+                }
+
+                // 비밀번호 입력 받기
+                String password = request.getParameter("password");
+                String confirmPassword = request.getParameter("confirmPassword");
+
+                if (password == null || password.isEmpty()) {
+                    sendError(response, 400, "비밀번호를 입력해주세요");
+                    return;
+                }
+
+                if (!password.equals(confirmPassword)) {
+                    sendError(response, 400, "비밀번호가 일치하지 않습니다");
+                    return;
+                }
+
+                // 1. Keystore 생성
+                String keystorePath = getServletContext().getRealPath("/") + "keystore.jks";
+                createKeystore(keystorePath, password);
+
+                // 2. EC256 키쌍 생성 및 Keystore에 저장
+                generateAndStoreEC256Keys(keystorePath, password);
+
+                // 3. 비밀번호를 세션에 저장 (파일 저장 안 함)
+                HttpSession session = request.getSession(true);
+                storeKeystorePasswordInSession(session, password);
+
+                // 4. 초기화 완료 플래그 생성
+                createSetupFlag();
+
+                // 응답
+                JsonObject result = new JsonObject();
+                result.addProperty("success", true);
+                result.addProperty("message", "초기 설정이 완료되었습니다");
+                response.getWriter().write(result.toString());
+
+            } catch (Exception e) {
+                sendError(response, 500, "초기 설정 실패: " + e.getMessage());
             }
-
-            // 비밀번호 입력 받기
-            String password = request.getParameter("password");
-            String confirmPassword = request.getParameter("confirmPassword");
-
-            if (password == null || password.isEmpty()) {
-                sendError(response, 400, "비밀번호를 입력해주세요");
-                return;
-            }
-
-            if (!password.equals(confirmPassword)) {
-                sendError(response, 400, "비밀번호가 일치하지 않습니다");
-                return;
-            }
-
-            // 1. Keystore 생성
-            String keystorePath = getServletContext().getRealPath("/") + "keystore.jks";
-            createKeystore(keystorePath, password);
-
-            // 2. EC256 키쌍 생성 및 Keystore에 저장
-            generateAndStoreEC256Keys(keystorePath, password);
-
-            // 3. 비밀번호를 세션에 저장 (파일 저장 안 함)
-            HttpSession session = request.getSession(true);
-            storeKeystorePasswordInSession(session, password);
-
-            // 4. 초기화 완료 플래그 생성
-            createSetupFlag();
-
-            // 응답
-            JsonObject result = new JsonObject();
-            result.addProperty("success", true);
-            result.addProperty("message", "초기 설정이 완료되었습니다");
-            response.getWriter().write(result.toString());
-
-        } catch (Exception e) {
-            sendError(response, 500, "초기 설정 실패: " + e.getMessage());
-        }
         }
     }
 
@@ -200,24 +194,6 @@ public class SetupServlet extends HttpServlet {
         setCorsHeaders(response);
         response.setContentType("application/json; charset=UTF-8");
         sendError(response, 403, "강제 초기화는 더 이상 지원되지 않습니다. 관리자에게 문의하세요.");
-    }    /**
-     * 초기 설정 파일 삭제
-     */
-    private void deleteSetupFiles(String webappPath) throws IOException {
-        String[] filesToDelete = {
-            webappPath + "keystore.jks",
-            webappPath + "setup-completed.flag"
-            // jwt-config.properties는 더 이상 사용하지 않음
-        };
-
-        for (String filePath : filesToDelete) {
-            try {
-                Files.deleteIfExists(Paths.get(filePath));
-            } catch (Exception e) {
-                // 파일 삭제 실패해도 계속 진행
-                e.printStackTrace();
-            }
-        }
     }
 
     /**
@@ -242,17 +218,16 @@ public class SetupServlet extends HttpServlet {
 
         // keytool 명령어로 EC256 키쌍 생성
         ProcessBuilder pb = new ProcessBuilder(
-            "keytool",
-            "-genkeypair",
-            "-alias", keyAlias,
-            "-keyalg", "EC",
-            "-keysize", "256",
-            "-keystore", keystorePath,
-            "-storepass", keystorePass,
-            "-keypass", keyPassword,
-            "-validity", "3650",
-            "-dname", "CN=JWT-EC256, OU=JWT, O=Dev, L=Seoul, ST=Seoul, C=KR"
-        );
+                "keytool",
+                "-genkeypair",
+                "-alias", keyAlias,
+                "-keyalg", "EC",
+                "-keysize", "256",
+                "-keystore", keystorePath,
+                "-storepass", keystorePass,
+                "-keypass", keyPassword,
+                "-validity", "3650",
+                "-dname", "CN=JWT-EC256, OU=JWT, O=Dev, L=Seoul, ST=Seoul, C=KR");
 
         pb.redirectErrorStream(true);
         Process process = pb.start();
@@ -276,10 +251,10 @@ public class SetupServlet extends HttpServlet {
     private void storeKeystorePasswordInSession(HttpSession session, String keystorePassword) throws Exception {
         logger.info("=== storeApiKey START ===");
         logger.info("Storing keystore password in session");
-        
+
         session.setAttribute("keystorePassword", keystorePassword);
         session.setMaxInactiveInterval(30 * 60); // 30분
-        
+
         logger.info("Keystore password stored in session");
         logger.info("=== storeApiKey END ===");
     }
@@ -324,17 +299,17 @@ public class SetupServlet extends HttpServlet {
         String webappPath = getServletContext().getRealPath("/");
         String keystorePath = webappPath + "keystore.jks";
         String password = request.getParameter("password");
-        
+
         logger.info("=== backupKeystore START ===");
         logger.info("WebappPath: {}", webappPath);
-        
+
         // 비밀번호 검증
         if (password == null || password.isEmpty()) {
             logger.warn("비밀번호 미제공");
             sendError(response, 400, "비밀번호를 제공해주세요");
             return;
         }
-        
+
         // Keystore 비밀번호 검증
         try {
             if (!KeystoreService.verifyKeystorePassword(keystorePath, password)) {
@@ -347,7 +322,7 @@ public class SetupServlet extends HttpServlet {
             sendError(response, 401, "비밀번호 검증 실패: " + e.getMessage());
             return;
         }
-        
+
         logger.info("Keystore 백업 진행");
 
         if (!Files.exists(Paths.get(keystorePath))) {
@@ -366,15 +341,18 @@ public class SetupServlet extends HttpServlet {
             JsonObject result = new JsonObject();
             result.addProperty("success", true);
             result.addProperty("data", base64Data);
-            result.addProperty("filename", "keystore-" + new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()) + ".jks");
-            
+            result.addProperty("filename",
+                    "keystore-" + new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()) + ".jks");
+
             response.getWriter().write(result.toString());
             logger.info("=== backupKeystore END (SUCCESS) ===");
         } catch (Exception e) {
             logger.error("백업 실패: {}", e.getMessage());
             sendError(response, 500, "백업 실패: " + e.getMessage());
         }
-    }    /**
+    }
+
+    /**
      * Keystore 복원 업로드
      */
     public void restoreKeystore(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -382,7 +360,7 @@ public class SetupServlet extends HttpServlet {
 
         String webappPath = getServletContext().getRealPath("/");
         String keystorePath = webappPath + "keystore.jks";
-        
+
         logger.info("=== restoreKeystore START ===");
 
         // Base64 인코딩된 데이터와 비밀번호 받기
@@ -414,7 +392,7 @@ public class SetupServlet extends HttpServlet {
 
             // Base64 디코딩
             byte[] keystoreData = Base64.decode(base64Data);
-            
+
             // 임시 파일로 복원할 Keystore를 테스트
             // (실제로 복원 전에 비밀번호가 맞는지 확인)
             boolean passwordValid = false;
@@ -438,15 +416,15 @@ public class SetupServlet extends HttpServlet {
             // 기존 백업 생성
             if (Files.exists(Paths.get(keystorePath))) {
                 String backupPath = keystorePath + ".backup";
-                Files.copy(Paths.get(keystorePath), Paths.get(backupPath), 
-                          java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(Paths.get(keystorePath), Paths.get(backupPath),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 logger.info("기존 Keystore 백업 완료: {}", backupPath);
             }
 
             // Keystore 복원
             Files.write(Paths.get(keystorePath), keystoreData);
             logger.info("Keystore 복원 완료");
-            
+
             // 비밀번호를 세션에 저장 (파일 저장 제거)
             HttpSession session = request.getSession(true);
             storeKeystorePasswordInSession(session, password);
@@ -474,70 +452,70 @@ public class SetupServlet extends HttpServlet {
     private void changeKeystorePassword(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String webappPath = getServletContext().getRealPath("/");
         String keystorePath = webappPath + "keystore.jks";
-        
+
         String currentPassword = request.getParameter("currentPassword");
         String newPassword = request.getParameter("newPassword");
         String confirmPassword = request.getParameter("confirmPassword");
-        
+
         if (currentPassword == null || currentPassword.isEmpty()) {
             sendError(response, 400, "현재 비밀번호를 입력해주세요");
             return;
         }
-        
+
         if (newPassword == null || newPassword.isEmpty()) {
             sendError(response, 400, "새 비밀번호를 입력해주세요");
             return;
         }
-        
+
         if (!newPassword.equals(confirmPassword)) {
             sendError(response, 400, "새 비밀번호가 일치하지 않습니다");
             return;
         }
-        
+
         // 현재 비밀번호 검증 (Keystore로)
         if (!KeystoreService.verifyKeystorePassword(keystorePath, currentPassword)) {
             sendError(response, 401, "현재 비밀번호가 일치하지 않습니다");
             return;
         }
-        
+
         try {
             logger.info("=== changeKeystorePassword START ===");
-            
+
             // Keystore 로드
             KeyStore keystore = KeystoreService.loadKeystore(keystorePath, currentPassword);
             logger.info("Keystore 로드 완료");
-            
+
             // 백업 생성
             String backupPath = keystorePath + ".backup";
-            Files.copy(Paths.get(keystorePath), Paths.get(backupPath), 
-                      java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(Paths.get(keystorePath), Paths.get(backupPath),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             logger.info("Keystore 백업 완료: {}", backupPath);
-            
+
             // 1. Keystore 비밀번호 변경
             try (FileOutputStream fos = new FileOutputStream(keystorePath)) {
                 keystore.store(fos, newPassword.toCharArray());
             }
             logger.info("Keystore 비밀번호 변경 완료");
-            
+
             // 2. 키 엔트리의 비밀번호도 변경 (Keystore 비밀번호와 동일하게)
             KeystoreService.changeKeyPassword(keystorePath, newPassword, currentPassword, newPassword);
             logger.info("키 엔트리 비밀번호 변경 완료");
-            
+
             // 새 비밀번호를 세션에 저장 (파일 저장 제거)
             HttpSession session = request.getSession(true);
             storeKeystorePasswordInSession(session, newPassword);
             logger.info("새 비밀번호를 세션에 저장");
-            
+
             // 캐시 리셋
             getServletContext().setAttribute("jwt_keys_loaded", false);
-            
+
             // 응답
             JsonObject result = new JsonObject();
             result.addProperty("success", true);
             result.addProperty("message", "비밀번호가 성공적으로 변경되었습니다");
             response.getWriter().write(result.toString());
             logger.info("=== changeKeystorePassword END (SUCCESS) ===");
-            
+
         } catch (Exception e) {
             logger.error("=== changeKeystorePassword END (ERROR) ===", e);
             sendError(response, 500, "비밀번호 변경 실패: " + e.getMessage());
@@ -551,66 +529,66 @@ public class SetupServlet extends HttpServlet {
         String adminPassword = request.getParameter("adminPassword");
         String newPassword = request.getParameter("password");
         String confirmPassword = request.getParameter("confirmPassword");
-        
+
         if (adminPassword == null || adminPassword.isEmpty()) {
             sendError(response, 400, "관리자 비밀번호를 입력해주세요");
             return;
         }
-        
+
         if (newPassword == null || newPassword.isEmpty()) {
             sendError(response, 400, "새 비밀번호를 입력해주세요");
             return;
         }
-        
+
         if (!newPassword.equals(confirmPassword)) {
             sendError(response, 400, "새 비밀번호가 일치하지 않습니다");
             return;
         }
-        
+
         String webappPath = getServletContext().getRealPath("/");
         String keystorePath = webappPath + "keystore.jks";
-        
+
         // 현재 비밀번호로 관리자 권한 확인
         if (!KeystoreService.verifyKeystorePassword(keystorePath, adminPassword)) {
             sendError(response, 401, "관리자 비밀번호가 일치하지 않습니다");
             return;
         }
-        
+
         try {
             logger.info("=== forceReset START ===");
-            
+
             // 기존 파일 백업
             String backupPath = keystorePath + ".reset-backup";
             if (Files.exists(Paths.get(keystorePath))) {
-                Files.copy(Paths.get(keystorePath), Paths.get(backupPath), 
-                          java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                Files.copy(Paths.get(keystorePath), Paths.get(backupPath),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 logger.info("Keystore 백업 완료: {}", backupPath);
             }
-            
+
             // 초기 설정과 동일한 과정 수행
             // 1. Keystore 생성
             createKeystore(keystorePath, newPassword);
             logger.info("새로운 Keystore 생성");
-            
+
             // 2. EC256 키쌍 생성 및 Keystore에 저장
             generateAndStoreEC256Keys(keystorePath, newPassword);
             logger.info("EC256 키쌍 생성");
-            
+
             // 3. 비밀번호를 세션에 저장
             HttpSession session = request.getSession(true);
             storeKeystorePasswordInSession(session, newPassword);
             logger.info("새 비밀번호를 세션에 저장");
-            
+
             // 4. 캐시 리셋
             getServletContext().setAttribute("jwt_keys_loaded", false);
-            
+
             // 응답
             JsonObject result = new JsonObject();
             result.addProperty("success", true);
             result.addProperty("message", "시스템이 성공적으로 초기화되었습니다. 페이지를 새로고침해주세요");
             response.getWriter().write(result.toString());
             logger.info("=== forceReset END (SUCCESS) ===");
-            
+
         } catch (Exception e) {
             logger.error("=== forceReset END (ERROR) ===", e);
             sendError(response, 500, "초기화 실패: " + e.getMessage());

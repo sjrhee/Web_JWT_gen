@@ -3,6 +3,12 @@
     <Properties>
         <Property name="log.path">/var/lib/tomcat9/logs</Property>
         <Property name="log.pattern">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
+        <!-- 
+        로깅 모드 설정:
+        - PRODUCTION (기본값): 일반 배포용, INFO 레벨 (디버그 정보 제외)
+        - DEBUG: 문제 발생 시, DEBUG 레벨 (모든 로그 포함)
+        -->
+        <Property name="log.mode">PRODUCTION</Property>
     </Properties>
 
     <Appenders>
@@ -16,7 +22,7 @@
             <PatternLayout pattern="${log.pattern}"/>
         </File>
 
-        <!-- File Appender for debug logs only -->
+        <!-- File Appender for debug logs only (DEBUG 모드에서만 사용) -->
         <File name="DebugFile" fileName="${log.path}/webjwtgen-debug.log">
             <PatternLayout pattern="${log.pattern}"/>
             <LevelRangeFilter minLevel="DEBUG" maxLevel="DEBUG"/>
@@ -30,27 +36,49 @@
     </Appenders>
 
     <Loggers>
-        <!-- JWT Security Package -->
-        <Logger name="com.security.jwt" level="DEBUG" additivity="false">
+        <!-- 
+        로깅 설정 가이드:
+        
+        [PRODUCTION 모드 (기본)]
+        - JWT Security 패키지: INFO 레벨 → 중요 정보만 로깅
+        - 출력: console, webjwtgen.log, webjwtgen-error.log
+        - DEBUG 레벨 로그는 제외됨 (성능 최적화)
+        
+        [DEBUG 모드 (문제 발생 시)]
+        다음을 변경하세요:
+        1. log.mode 프로퍼티를 DEBUG로 변경
+        2. 아래 로거 레벨을 DEBUG로 변경:
+           - com.security.jwt.SetupServlet: DEBUG
+           - com.security.jwt.JwtServlet: DEBUG
+           - com.security.jwt.service: DEBUG
+        3. DebugFile Appender를 활성화
+        -->
+        
+        <!-- JWT Security 메인 로거 - PRODUCTION 모드 -->
+        <Logger name="com.security.jwt" level="INFO" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="File"/>
-            <AppenderRef ref="DebugFile"/>
             <AppenderRef ref="ErrorFile"/>
         </Logger>
 
-        <!-- PasswordService specific logger -->
-        <Logger name="com.security.jwt.service.PasswordService" level="DEBUG" additivity="false">
+        <!-- SetupServlet 로거 - PRODUCTION 모드 (WARN 이상만 로깅) -->
+        <Logger name="com.security.jwt.SetupServlet" level="WARN" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="File"/>
-            <AppenderRef ref="DebugFile"/>
             <AppenderRef ref="ErrorFile"/>
         </Logger>
 
-        <!-- SetupServlet specific logger -->
-        <Logger name="com.security.jwt.SetupServlet" level="DEBUG" additivity="false">
+        <!-- JwtServlet 로거 - PRODUCTION 모드 (WARN 이상만 로깅) -->
+        <Logger name="com.security.jwt.JwtServlet" level="WARN" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="File"/>
-            <AppenderRef ref="DebugFile"/>
+            <AppenderRef ref="ErrorFile"/>
+        </Logger>
+
+        <!-- 서비스 레이어 로거 - PRODUCTION 모드 (WARN 이상만 로깅) -->
+        <Logger name="com.security.jwt.service" level="WARN" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="File"/>
             <AppenderRef ref="ErrorFile"/>
         </Logger>
 

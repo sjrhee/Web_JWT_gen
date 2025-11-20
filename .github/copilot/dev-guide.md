@@ -146,10 +146,90 @@ boolean isAdmin = PasswordService.isAdminLoggedIn(session);
 
 ## 로깅 및 디버깅
 
-### Log4j2 설정
-- 설정 파일: `src/main/resources/log4j2.xml`
-- 모든 서블릿과 서비스에 Logger 구현됨
-- 로깅 레벨: INFO, WARN, ERROR
+### Log4j2 설정 (PRODUCTION/DEBUG 모드)
+
+#### 설정 파일
+- 경로: `src/main/resources/log4j2.xml`
+- 로그 저장 경로: `/var/lib/tomcat9/logs/`
+
+#### PRODUCTION 모드 (기본값 - 일반 배포용)
+```xml
+<Property name="log.mode">PRODUCTION</Property>
+```
+
+**특징:**
+- 로깅 레벨: WARN 이상만 로깅 (INFO/DEBUG 제외)
+- 성능 최적화됨
+- 출력 대상: console, webjwtgen.log, webjwtgen-error.log
+- 로그 볼륨: 최소화
+
+**로거별 레벨 설정:**
+- `com.security.jwt`: INFO
+- `com.security.jwt.SetupServlet`: WARN
+- `com.security.jwt.JwtServlet`: WARN
+- `com.security.jwt.service`: WARN
+
+#### DEBUG 모드 (문제 발생 시)
+문제를 진단하기 위해 DEBUG 모드로 전환:
+
+**1단계: log4j2.xml 수정**
+```xml
+<!-- PRODUCTION에서 DEBUG로 변경 -->
+<Property name="log.mode">DEBUG</Property>
+```
+
+**2단계: 로거 레벨 변경** (문제 디버깅용)
+```xml
+<!-- SetupServlet 로거 -->
+<Logger name="com.security.jwt.SetupServlet" level="DEBUG" additivity="false">
+
+<!-- JwtServlet 로거 -->
+<Logger name="com.security.jwt.JwtServlet" level="DEBUG" additivity="false">
+
+<!-- 서비스 레이어 로거 -->
+<Logger name="com.security.jwt.service" level="DEBUG" additivity="false">
+```
+
+**3단계: DebugFile Appender 활성화**
+```xml
+<!-- 해당 로거에 DebugFile 추가 -->
+<AppenderRef ref="DebugFile"/>
+```
+
+**4단계: Tomcat 재배포 및 재시작**
+```bash
+cd /home/ubuntu/Work/webjwtgen
+mvn clean package -DskipTests
+sudo cp target/webjwtgen.war /var/lib/tomcat9/webapps/
+sudo systemctl restart tomcat9
+```
+
+#### 로그 파일 위치 및 용도
+
+| 파일 | 용도 | 로그 레벨 |
+|------|------|---------|
+| `webjwtgen.log` | 모든 로그 | INFO 이상 |
+| `webjwtgen-error.log` | 에러만 | ERROR/FATAL |
+| `webjwtgen-debug.log` | 디버그 정보만 (DEBUG 모드) | DEBUG |
+
+#### 로그 확인 명령어
+```bash
+# 실시간 모니터링 (모든 로그)
+tail -f /var/lib/tomcat9/logs/webjwtgen.log
+
+# 에러 로그만 확인
+tail -f /var/lib/tomcat9/logs/webjwtgen-error.log
+
+# DEBUG 모드 로그 (DEBUG 모드에서만 생성)
+tail -f /var/lib/tomcat9/logs/webjwtgen-debug.log
+
+# 특정 문자열 검색
+grep "ERROR" /var/lib/tomcat9/logs/webjwtgen.log
+grep "SetupServlet" /var/lib/tomcat9/logs/webjwtgen.log
+
+# 마지막 100줄 확인
+tail -100 /var/lib/tomcat9/logs/webjwtgen.log
+```
 
 ## 주요 서블릿 및 엔드포인트
 
@@ -250,21 +330,10 @@ HTTP 응답 처리 (JSON 포맷)
 | `isSetupCompleted()` | 초기화 완료 여부 확인 | 문서용 예시 |
 | `fileExists()` | 파일 존재 여부 확인 | `JwtServlet` |
 
-**제거된 미사용 메서드:**
-- ~~`deleteSetupFiles()`~~ - 미사용
-- ~~`deleteFile()`~~ - 미사용
-- ~~`getSetupFlagFile()`~~ - 미사용
-
-
-
 ### 설정 파일 확인
 ```bash
 # 설정 파일 경로
 cat ~/.jwt-config/jwt-config.properties
-
-# KeyStore 내용 확인
-keytool -list -v -keystore ~/.jwt-config/keystore.jks -storepass {password}
-```
 
 ### 디버깅 팁
 

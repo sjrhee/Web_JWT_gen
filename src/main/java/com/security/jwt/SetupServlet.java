@@ -51,8 +51,16 @@ public class SetupServlet extends HttpServlet {
     @Override
     protected void doOptions(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        setCorsHeaders(response);
-        response.setStatus(HttpServletResponse.SC_OK);
+        logger.info("=== doOptions START (CORS Preflight) ===");
+        try {
+            setCorsHeaders(response);
+            response.setStatus(HttpServletResponse.SC_OK);
+            logger.info("CORS preflight 응답 완료");
+            logger.info("=== doOptions END ===");
+        } catch (Exception e) {
+            logger.error("CORS preflight 처리 실패: {}", e.getMessage(), e);
+            throw new ServletException(e);
+        }
     }
 
     @Override
@@ -60,12 +68,15 @@ public class SetupServlet extends HttpServlet {
             throws ServletException, IOException {
         setCorsHeaders(response);
         String action = request.getParameter("action");
+        logger.info("=== doGet START (action: {}) ===", action);
 
         if ("backup".equals(action)) {
+            logger.info("Backup 요청 처리");
             // Keystore 백업
             try {
                 backupKeystore(request, response);
             } catch (Exception e) {
+                logger.error("Backup 실패", e);
                 try {
                     sendError(response, 500, "백업 실패: " + e.getMessage());
                 } catch (IOException ex) {
@@ -73,74 +84,89 @@ public class SetupServlet extends HttpServlet {
                 }
             }
         } else {
+            logger.info("설정 상태 확인 요청");
             // 초기화 상태 확인
             response.setContentType("application/json; charset=UTF-8");
 
             boolean isSetupCompleted = isSetupCompleted();
+            logger.info("Setup 완료 여부: {}", isSetupCompleted);
 
             JsonObject result = new JsonObject();
             result.addProperty("setupCompleted", isSetupCompleted);
             response.getWriter().write(result.toString());
         }
+        logger.info("=== doGet END ===");
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        logger.info("=== doPost START ===");
         setCorsHeaders(response);
         response.setContentType("application/json; charset=UTF-8");
         String action = request.getParameter("action");
+        logger.info("요청 작업: {}", action);
 
-        if ("backup".equals(action)) {
-            // Keystore 백업
-            try {
-                backupKeystore(request, response);
-            } catch (Exception e) {
+        try {
+            if ("backup".equals(action)) {
+                logger.info("Keystore 백업 요청");
+                // Keystore 백업
                 try {
-                    sendError(response, 500, "백업 실패: " + e.getMessage());
-                } catch (IOException ex) {
-                    ex.printStackTrace();
+                    backupKeystore(request, response);
+                } catch (Exception e) {
+                    logger.error("백업 작업 실패: {}", e.getMessage(), e);
+                    try {
+                        sendError(response, 500, "백업 실패: " + e.getMessage());
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
                 }
-            }
-        } else if ("restore".equals(action)) {
-            // Keystore 복원
-            try {
-                restoreKeystore(request, response);
-            } catch (Exception e) {
+            } else if ("restore".equals(action)) {
+                logger.info("Keystore 복원 요청");
+                // Keystore 복원
                 try {
-                    sendError(response, 500, "복원 실패: " + e.getMessage());
-                } catch (IOException ex) {
-                    ex.printStackTrace();
+                    restoreKeystore(request, response);
+                } catch (Exception e) {
+                    logger.error("복원 작업 실패: {}", e.getMessage(), e);
+                    try {
+                        sendError(response, 500, "복원 실패: " + e.getMessage());
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
                 }
-            }
-        } else if ("changePassword".equals(action)) {
-            // Keystore 비밀번호 변경
-            try {
-                changeKeystorePassword(request, response);
-            } catch (Exception e) {
+            } else if ("changePassword".equals(action)) {
+                logger.info("Keystore 비밀번호 변경 요청");
+                // Keystore 비밀번호 변경
                 try {
-                    sendError(response, 500, "비밀번호 변경 실패: " + e.getMessage());
-                } catch (IOException ex) {
-                    ex.printStackTrace();
+                    changeKeystorePassword(request, response);
+                } catch (Exception e) {
+                    logger.error("비밀번호 변경 실패: {}", e.getMessage(), e);
+                    try {
+                        sendError(response, 500, "비밀번호 변경 실패: " + e.getMessage());
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
                 }
-            }
-        } else if ("forceReset".equals(action)) {
-            // 강제 초기화
-            try {
-                forceReset(request, response);
-            } catch (Exception e) {
+            } else if ("forceReset".equals(action)) {
+                logger.info("강제 초기화 요청");
+                // 강제 초기화
                 try {
-                    sendError(response, 500, "초기화 실패: " + e.getMessage());
-                } catch (IOException ex) {
-                    ex.printStackTrace();
+                    forceReset(request, response);
+                } catch (Exception e) {
+                    logger.error("초기화 작업 실패: {}", e.getMessage(), e);
+                    try {
+                        sendError(response, 500, "초기화 실패: " + e.getMessage());
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
                 }
-            }
-        } else {
-            // 초기 설정 수행
+            } else {
+                logger.info("초기 설정 요청 처리");
+                // 초기 설정 수행
 
-            try {
                 // 이미 초기화되었는지 확인
                 if (isSetupCompleted()) {
+                    logger.warn("이미 초기화되었음. 요청 거부");
                     sendError(response, 400, "이미 초기화되었습니다");
                     return;
                 }
@@ -148,40 +174,51 @@ public class SetupServlet extends HttpServlet {
                 // 비밀번호 입력 받기
                 String password = request.getParameter("password");
                 String confirmPassword = request.getParameter("confirmPassword");
+                logger.info("초기 설정 비밀번호 검증 시작");
 
                 if (password == null || password.isEmpty()) {
+                    logger.warn("비밀번호 미입력");
                     sendError(response, 400, "비밀번호를 입력해주세요");
                     return;
                 }
 
                 if (!password.equals(confirmPassword)) {
+                    logger.warn("비밀번호 불일치");
                     sendError(response, 400, "비밀번호가 일치하지 않습니다");
                     return;
                 }
+                logger.info("비밀번호 검증 완료");
 
                 // 1. Keystore 생성
+                logger.info("Step 1: Keystore 생성");
                 String keystorePath = getServletContext().getRealPath("/") + "keystore.jks";
                 createKeystore(keystorePath, password);
 
                 // 2. EC256 키쌍 생성 및 Keystore에 저장
+                logger.info("Step 2: EC256 키쌍 생성 및 저장");
                 generateAndStoreEC256Keys(keystorePath, password);
 
                 // 3. 비밀번호를 세션에 저장 (파일 저장 안 함)
+                logger.info("Step 3: 세션에 비밀번호 저장");
                 HttpSession session = request.getSession(true);
                 storeKeystorePasswordInSession(session, password);
 
                 // 4. 초기화 완료 플래그 생성
+                logger.info("Step 4: 초기화 완료 플래그 생성");
                 createSetupFlag();
 
+                logger.info("초기 설정 모든 단계 완료");
                 // 응답
                 JsonObject result = new JsonObject();
                 result.addProperty("success", true);
                 result.addProperty("message", "초기 설정이 완료되었습니다");
                 response.getWriter().write(result.toString());
-
-            } catch (Exception e) {
-                sendError(response, 500, "초기 설정 실패: " + e.getMessage());
             }
+        } catch (Exception e) {
+            logger.error("doPost 처리 중 예외 발생: {}", e.getMessage(), e);
+            throw new ServletException(e);
+        } finally {
+            logger.info("=== doPost END ===");
         }
     }
 
@@ -191,30 +228,41 @@ public class SetupServlet extends HttpServlet {
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        logger.info("=== doDelete START ===");
         setCorsHeaders(response);
         response.setContentType("application/json; charset=UTF-8");
-        sendError(response, 403, "강제 초기화는 더 이상 지원되지 않습니다. 관리자에게 문의하세요.");
+        logger.warn("강제 초기화 요청 - 보안상 비활성화됨");
+        try {
+            sendError(response, 403, "강제 초기화는 더 이상 지원되지 않습니다. 관리자에게 문의하세요.");
+        } finally {
+            logger.info("=== doDelete END ===");
+        }
     }
 
     /**
      * Keystore 생성
      */
     private void createKeystore(String keystorePath, String password) throws Exception {
+        logger.info("=== createKeystore START (keystorePath: {}) ===", keystorePath);
         // 기존 keystore 삭제
         Files.deleteIfExists(Paths.get(keystorePath));
+        logger.info("기존 Keystore 파일 삭제 완료");
 
         // 빈 keystore 생성 (첫 엔트리 추가 시 자동 생성)
         // keytool로 생성하거나 Java API로 생성 가능
         // 여기서는 첫 번째 키 추가 시 자동 생성됨
+        logger.info("=== createKeystore END ===");
     }
 
     /**
      * EC256 키쌍 생성 및 Keystore에 저장
      */
     private void generateAndStoreEC256Keys(String keystorePath, String password) throws Exception {
+        logger.info("=== generateAndStoreEC256Keys START ===");
         String keystorePass = password;
         String keyAlias = "ec256-jwt";
         String keyPassword = password;
+        logger.info("KeyAlias: {}, KeySize: 256", keyAlias);
 
         // keytool 명령어로 EC256 키쌍 생성
         ProcessBuilder pb = new ProcessBuilder(
@@ -230,18 +278,24 @@ public class SetupServlet extends HttpServlet {
                 "-dname", "CN=JWT-EC256, OU=JWT, O=Dev, L=Seoul, ST=Seoul, C=KR");
 
         pb.redirectErrorStream(true);
+        logger.info("keytool 프로세스 시작");
         Process process = pb.start();
         int exitCode = process.waitFor();
+        logger.info("keytool 프로세스 종료 (exitCode: {})", exitCode);
 
         if (exitCode != 0) {
+            logger.error("Keystore 생성 실패 (exitCode: {})", exitCode);
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             StringBuilder output = new StringBuilder();
             while ((line = reader.readLine()) != null) {
                 output.append(line).append("\n");
             }
+            logger.error("keytool 오류 출력: {}", output.toString());
             throw new Exception("Keystore 생성 실패: " + output.toString());
         }
+        logger.info("EC256 키쌍 생성 및 Keystore 저장 완료");
+        logger.info("=== generateAndStoreEC256Keys END ===");
     }
 
     /**
@@ -263,8 +317,12 @@ public class SetupServlet extends HttpServlet {
      * 초기화 완료 플래그 생성
      */
     private void createSetupFlag() throws IOException {
+        logger.info("=== createSetupFlag START ===");
         String flagPath = getServletContext().getRealPath("/") + SETUP_FLAG_FILE;
+        logger.info("Setup 플래그 경로: {}", flagPath);
         Files.write(Paths.get(flagPath), "setup-completed".getBytes());
+        logger.info("Setup 플래그 생성 완료");
+        logger.info("=== createSetupFlag END ===");
     }
 
     /**

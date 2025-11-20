@@ -345,10 +345,6 @@ public class SetupServlet extends HttpServlet {
     }
 
     /**
-     * Keystore 비밀번호 검증 및 인증 토큰 발급
-     */
-
-    /**
      * Keystore 백업 다운로드
      */
     public void backupKeystore(HttpServletRequest request, HttpServletResponse response) throws Exception {

@@ -27,39 +27,9 @@ public class FileService {
     }
 
     /**
-     * 초기화 관련 파일 삭제
-     */
-    public static void deleteSetupFiles(String webappPath) throws IOException {
-        String[] filesToDelete = {
-            webappPath + "keystore.jks",
-            webappPath + "jwt-config.properties",
-            webappPath + SETUP_FLAG_FILE
-        };
-
-        for (String filePath : filesToDelete) {
-            try {
-                Files.deleteIfExists(Paths.get(filePath));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    /**
      * 파일 존재 여부 확인
      */
     public static boolean fileExists(String filePath) {
         return Files.exists(Paths.get(filePath));
-    }
-
-    /**
-     * 파일 삭제
-     */
-    public static void deleteFile(String filePath) throws IOException {
-        Files.deleteIfExists(Paths.get(filePath));
-    }
-
-    public static String getSetupFlagFile() {
-        return SETUP_FLAG_FILE;
     }
 }

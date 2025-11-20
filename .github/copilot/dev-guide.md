@@ -229,17 +229,33 @@ JWT 토큰 생성 및 변환
 | `generateJWT()` | JWT 토큰 생성 (ES256) |
 | `convertPublicKeyToPem()` | 공개키를 PEM 형식으로 변환 |
 
-### CertificateService
-X509 자체 서명 인증서 생성
-
 ### ResponseService
 HTTP 응답 처리 (JSON 포맷)
 
-### PasswordService
-비밀번호 검증 및 세션 관리
+| 메서드 | 설명 |
+|--------|------|
+| `sendSuccess()` | 성공 응답 |
+| `sendSuccessWithData()` | 성공 응답 (추가 데이터) |
+| `sendJWTResponse()` | JWT 응답 |
+| `sendError()` | 에러 응답 |
+| `sendErrorWithInfo()` | 에러 응답 (추가 정보) |
+| `sendKeystoreNotFoundError()` | Keystore 없음 에러 |
 
 ### FileService
-파일 작업 (플래그 생성/확인)
+파일 작업 (플래그 생성/확인, 파일 존재 확인)
+
+| 메서드 | 설명 | 사용 현황 |
+|--------|------|--------|
+| `createSetupFlag()` | 초기화 완료 플래그 생성 | `SetupServlet` |
+| `isSetupCompleted()` | 초기화 완료 여부 확인 | 문서용 예시 |
+| `fileExists()` | 파일 존재 여부 확인 | `JwtServlet` |
+
+**제거된 미사용 메서드:**
+- ~~`deleteSetupFiles()`~~ - 미사용
+- ~~`deleteFile()`~~ - 미사용
+- ~~`getSetupFlagFile()`~~ - 미사용
+
+
 
 ### 설정 파일 확인
 ```bash

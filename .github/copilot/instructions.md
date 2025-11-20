@@ -19,11 +19,10 @@ webjwtgen/
 │   │   └── service/
 │   │       ├── JWTService.java       # JWT 생성/검증 로직
 │   │       ├── KeystoreService.java  # KeyStore 관리
-│   │       ├── CertificateService.java  # X509 인증서 생성
 │   │       ├── ConfigCrypto.java     # AES-GCM 암호화
 │   │       ├── ResponseService.java  # HTTP 응답 처리
 │   │       ├── PasswordService.java  # 비밀번호 검증
-│   │       └── FileService.java      # 파일 관리
+│   │       └── FileService.java      # 파일 관리 (플래그, 파일 존재 확인)
 │   ├── webapp/
 │   │   ├── setup.jsp                 # 초기 설정 페이지
 │   │   ├── index.jsp                 # JWT 생성 페이지

@@ -16,7 +16,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
  * EC256 JWT 생성 서블릿
  * exp, iss, sub를 입력받아 JWT 토큰 생성
  */
-@WebServlet(name = "JwtServlet", urlPatterns = {"/generate"})
+@WebServlet(name = "JwtServlet", urlPatterns = { "/generate" })
 public class JwtServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
@@ -24,7 +24,7 @@ public class JwtServlet extends HttpServlet {
     private PrivateKey privateKey;
     private String publicKeyPem;
     private boolean keysLoaded = false;
-    
+
     static {
         // 클래스 로드 시 BouncyCastle Security Provider 등록
         if (Security.getProvider("BC") == null) {
@@ -51,7 +51,7 @@ public class JwtServlet extends HttpServlet {
         logger.info("webappPath: " + webappPath);
         logger.info("keystorePath: " + keystorePath);
 
-        if (!FileService.fileExists(keystorePath)) {
+        if (!Files.exists(Paths.get(keystorePath))) {
             logger.error("Keystore 파일 없음: " + keystorePath);
             throw new RuntimeException("Keystore를 찾을 수 없습니다. 초기 설정을 먼저 진행하세요.");
         }
@@ -59,22 +59,22 @@ public class JwtServlet extends HttpServlet {
         try {
             logger.info("Getting keystore password from session");
             String keystorePassword = PasswordService.getKeystorePasswordFromSession(session);
-            
+
             if (keystorePassword == null) {
                 logger.error("Keystore password not found in session");
                 throw new RuntimeException("세션에서 Keystore 비밀번호를 찾을 수 없습니다. 초기 설정을 다시 진행하세요.");
             }
-            
+
             logger.info("keystorePassword 길이: " + keystorePassword.length());
 
             logger.info("KeystoreService.getPrivateKey 호출");
             privateKey = KeystoreService.getPrivateKey(keystorePath, keystorePassword, keystorePassword);
             logger.info("Private Key 로드 성공");
-            
+
             logger.info("KeystoreService.getPublicKey 호출");
             PublicKey publicKey = KeystoreService.getPublicKey(keystorePath, keystorePassword);
             logger.info("Public Key 로드 성공");
-            
+
             logger.info("convertPublicKeyToPem 호출");
             publicKeyPem = JWTService.convertPublicKeyToPem(publicKey);
             logger.info("Public Key PEM 변환 성공");
@@ -100,7 +100,7 @@ public class JwtServlet extends HttpServlet {
                 ResponseService.sendError(response, 400, "세션이 없습니다. 초기 설정을 진행하세요.");
                 return;
             }
-            
+
             // 키 로드 상태 확인
             Boolean keysLoadedFlag = (Boolean) getServletContext().getAttribute("jwt_keys_loaded");
             if (keysLoadedFlag != null && !keysLoadedFlag) {
@@ -124,13 +124,13 @@ public class JwtServlet extends HttpServlet {
             // Keystore 비밀번호 검증
             String password = request.getParameter("password");
             logger.info("Step 3: Keystore 비밀번호 검증");
-            
+
             if (password == null || password.isEmpty()) {
                 logger.warn("Step 3.1: 비밀번호 미제공");
                 ResponseService.sendError(response, 400, "Keystore 비밀번호를 입력해주세요");
                 return;
             }
-            
+
             try {
                 String webappPath = getServletContext().getRealPath("/");
                 String keystorePath = webappPath + "keystore.jks";
@@ -178,4 +178,3 @@ public class JwtServlet extends HttpServlet {
         doGet(request, response);
     }
 }
-

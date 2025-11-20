@@ -126,13 +126,18 @@ ResponseService.sendSuccessWithData(response, "메시지", "key", "value");
 ResponseService.sendError(response, 400, "잘못된 요청");
 ```
 
-### 파일 관리 (FileService)
+### 파일 관리 (SetupServlet 내부 로직)
 ```java
 // 초기화 완료 플래그 생성
-FileService.createSetupFlag(webappPath);
+createSetupFlag();  // SetupServlet private 메서드
 
 // 초기화 상태 확인
-boolean isSetup = FileService.isSetupCompleted(webappPath);
+boolean isSetup = isSetupCompleted();  // SetupServlet private 메서드
+
+// 파일 존재 여부 확인 (Java Files API)
+if (Files.exists(Paths.get(keystorePath))) {
+    // 파일 존재
+}
 ```
 
 ### 비밀번호 검증 (PasswordService)
@@ -321,14 +326,25 @@ HTTP 응답 처리 (JSON 포맷)
 | `sendErrorWithInfo()` | 에러 응답 (추가 정보) |
 | `sendKeystoreNotFoundError()` | Keystore 없음 에러 |
 
-### FileService
-파일 작업 (플래그 생성/확인, 파일 존재 확인)
+### 파일 작업
+**Java NIO Files API 직접 사용**
 
-| 메서드 | 설명 | 사용 현황 |
-|--------|------|--------|
-| `createSetupFlag()` | 초기화 완료 플래그 생성 | `SetupServlet` |
-| `isSetupCompleted()` | 초기화 완료 여부 확인 | 문서용 예시 |
-| `fileExists()` | 파일 존재 여부 확인 | `JwtServlet` |
+```java
+// 파일 존재 확인
+Files.exists(Paths.get(filePath))
+
+// 파일 쓰기
+Files.write(Paths.get(filePath), data.getBytes())
+
+// 파일 읽기
+byte[] data = Files.readAllBytes(Paths.get(filePath))
+
+// 파일 삭제
+Files.deleteIfExists(Paths.get(filePath))
+
+// 파일 복사
+Files.copy(Paths.get(source), Paths.get(destination), StandardCopyOption.REPLACE_EXISTING)
+```
 
 ### 설정 파일 확인
 ```bash

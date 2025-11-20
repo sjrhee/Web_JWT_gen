@@ -21,8 +21,7 @@ webjwtgen/
 │   │       ├── KeystoreService.java  # KeyStore 관리
 │   │       ├── ConfigCrypto.java     # AES-GCM 암호화
 │   │       ├── ResponseService.java  # HTTP 응답 처리
-│   │       ├── PasswordService.java  # 비밀번호 검증
-│   │       └── FileService.java      # 파일 관리 (플래그, 파일 존재 확인)
+│   │       └── PasswordService.java  # 비밀번호 검증
 │   ├── webapp/
 │   │   ├── setup.jsp                 # 초기 설정 페이지
 │   │   ├── index.jsp                 # JWT 생성 페이지

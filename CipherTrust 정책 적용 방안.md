@@ -51,11 +51,12 @@
 
 ### 5. 기타
 
-* RESTful API에 포함되는 요소 요약  
+* RESTful API에 포함되는 요소  
   1 "Authorization: Bearer $JWT_TOKEN"  
   2 "http://crdp-url/v1/protect" or "http://crdp-url/v1/reveal"  
   3 "protection_policy_name":  
   4 "data": or "protected_data":
 
 * Web UI JWT 발생기 제공
+
 

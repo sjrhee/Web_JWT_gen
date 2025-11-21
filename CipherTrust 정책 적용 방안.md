@@ -46,7 +46,7 @@
 
 *  json에 포함한 사용자 데이터 보다 우선함
 
-*  JWT를 CRDP 서버에서 활성화한 경우 JWT 서명검증에 통과해야 API가 작동
+*  JWT를 CRDP 서버에서 활성화한 경우 JWT 서명검증을 통과해야 API가 작동
 
 
 ### 5. 기타
@@ -58,6 +58,7 @@
   4 "data": or "protected_data":
 
 * Web UI JWT 발생기 제공
+
 
 
 

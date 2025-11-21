@@ -1,4 +1,4 @@
-## CipherTrust 정책 핵심 요약
+## CipherTrust CRDP 정책 핵심 요약
 
 ### 1. 보안 정책
 

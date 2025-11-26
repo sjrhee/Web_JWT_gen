@@ -16,8 +16,6 @@ import java.security.KeyStore;
  */
 public class SetupActionHandler {
     private static final Logger logger = LogManager.getLogger(SetupActionHandler.class);
-    private static final com.google.gson.Gson gson = new com.google.gson.Gson();
-
     private final String webappPath;
 
     public SetupActionHandler(String webappPath) {

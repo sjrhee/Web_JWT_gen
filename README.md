@@ -14,13 +14,13 @@ ES256(ECDSA with SHA-256) 기반 JWT 토큰 생성 및 관리 시스템입니다
 
 ### 1단계: 초기 설정
 ```
-http://localhost:8080/webjwtgen/setup.jsp
+https://localhost:8443/webjwtgen/setup.jsp
 ```
 비밀번호를 입력하면 Keystore가 자동 생성됩니다 (8글자 이상).
 
 ### 2단계: JWT 생성
 ```
-http://localhost:8080/webjwtgen/index.jsp
+https://localhost:8443/webjwtgen/
 ```
 다음 항목을 입력하여 JWT 토큰을 생성합니다:
 - Keystore 비밀번호 (초기화 시 설정한 값)
@@ -30,7 +30,7 @@ http://localhost:8080/webjwtgen/index.jsp
 
 ### 3단계: 관리 (선택사항)
 ```
-http://localhost:8080/webjwtgen/admin.jsp
+https://localhost:8443/webjwtgen/admin.jsp
 ```
 백업, 복원, 비밀번호 변경, 시스템 리셋
 
@@ -98,10 +98,27 @@ src/main/webapp/
 | BouncyCastle | 1.70 |
 | Log4j2 | 2.21.1 |
 
+## 🐳 Docker 배포
+
+### 이미지 가져오기
+```bash
+docker pull ghcr.io/sjrhee/web-jwt-gen:latest
+```
+
+### 컨테이너 실행
+```bash
+docker run -d -p 8443:8443 --name webjwtgen ghcr.io/sjrhee/web-jwt-gen:latest
+```
+
+### 접속
+```
+https://localhost:8443/webjwtgen/
+```
+
 ## 📊 포트
 
-- HTTP: 8080
-- HTTPS: 8443
+- HTTPS: 8443 (권장)
+- HTTP: 8080 (HTTPS로 자동 리다이렉트)
 
 ---
 

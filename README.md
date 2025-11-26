@@ -32,7 +32,7 @@ https://localhost:8443/webjwtgen/
 ```
 https://localhost:8443/webjwtgen/admin.jsp
 ```
-백업, 복원, 비밀번호 변경, 시스템 리셋
+백업, 복원, 비밀번호 변경
 
 ## 📡 API 엔드포인트
 
